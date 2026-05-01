@@ -43,12 +43,12 @@
     var mapHintText = null;
 
     var locations = [
-        { name:'Причал',        x:280, y:520, unlocked:true,  completed:false, targetType:'bochki',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle' },
-        { name:'За рекой',      x:320, y:80,  unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle' },
-        { name:'Великий Новгород', x:100, y:180, unlocked:false, completed:false, targetType:'kamen', targetCount:20, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle' }
+        { name:'Причал',        x:240, y:540, unlocked:true,  completed:false, targetType:'bochki',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle' },
+        { name:'За рекой',      x:350, y:130, unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle' },
+        { name:'Великий Новгород', x:120, y:140, unlocked:false, completed:false, targetType:'kamen', targetCount:20, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle' }
     ];
     var currentLocation = null;
-    var livesText, lives=5, maxLives=5, restoreTimer=null;
+    var livesText, lives=5, maxLives=5;
 
     var puzzleActive = false;
     var ROWS=6, COLS=6, CELL_SIZE=55;
@@ -99,15 +99,7 @@
             bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
             bgMusic.play();
         }
-        startLifeRestoreTimer();
         showPrologue.call(this);
-    }
-
-    function startLifeRestoreTimer() {
-        if (restoreTimer) clearInterval(restoreTimer);
-        restoreTimer = setInterval(function(){
-            if (lives < maxLives) { lives++; if (livesText) livesText.setText('❤️ x '+lives); }
-        }, 30000);
     }
 
     function showPrologue() {
@@ -133,8 +125,7 @@
         }
         if (portraitKey) {
             var scene = game.scene.scenes[0];
-            var portraitX = 330; // портрет справа
-            var portrait = scene.add.image(portraitX, 610, portraitKey); // немного подняли
+            var portrait = scene.add.image(70, 610, portraitKey);
             if (portraitKey === 'sadko') {
                 portrait.setDisplaySize(63, 120);
             } else {
@@ -187,16 +178,12 @@
             });
         });
 
-        // Стартовая позиция Жени
         var startX = lastPlayerLoc ? lastPlayerLoc.x : 50;
         var startY = lastPlayerLoc ? lastPlayerLoc.y : 350;
         playerContainer = this.add.container(startX, startY);
-        // Определяем, какой спрайт нужен
         var spriteKey = 'zhenya';
-        if (locations[1].completed && locations[0].completed && !locations[2].completed) spriteKey = 'zhenya';
-        else if (locations[1].completed && !locations[2].completed) spriteKey = 'zhenya_boat';
+        if (locations[1].completed && !locations[2].completed) spriteKey = 'zhenya_sadko_boat';
         else if (locations[0].completed && !locations[1].completed) spriteKey = 'zhenya_boat';
-        else if (locations[1].completed && locations[0].completed && locations[2].completed) spriteKey = 'zhenya';
         var currentSprite = this.add.image(0,0,spriteKey);
         if (spriteKey === 'zhenya_sadko_boat') {
             currentSprite.setDisplaySize(137, 120);
@@ -223,25 +210,21 @@
             musicBtn.setText(musicOn ? '🔊' : '🔇');
         });
 
-        // Диалоговое окно — текст слева, портрет справа
-        dialogBg = this.add.rectangle(80, 610, 260, 110, 0x000000, 0.75).setVisible(false);
-        dialogText = this.add.text(80, 588, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:240}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-        playButton = this.add.text(80, 642, '⚔️ ИГРАТЬ ⚔️', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
-        playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
+        livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
-        livesText = this.add.text(10, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
+        var hintText = allCompleted ? 'Нажми на кнопку «Проснуться»' : (function(){
+            var unlockedCount = locations.filter(function(l){ return l.unlocked && !l.completed; }).length;
+            if (unlockedCount === 1) {
+                var nextLoc = locations.find(function(l){ return l.unlocked && !l.completed; });
+                return nextLoc ? 'Нажми на иконку «' + nextLoc.name + '»' : 'Выбери локацию';
+            }
+            return 'Выбери локацию';
+        })();
 
-        // Подсказка
-        var unlockedCount = locations.filter(function(l){ return l.unlocked && !l.completed; }).length;
-        var hintText = 'Выбери локацию';
-        if (unlockedCount === 1) {
-            var nextLoc = locations.find(function(l){ return l.unlocked && !l.completed; });
-            if (nextLoc) hintText = 'Нажми на иконку «' + nextLoc.name + '»';
-        }
         var htemp = this.add.text(0,0,hintText,{ fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
         var hw=htemp.width, hh=htemp.height; htemp.destroy();
-        this.add.rectangle(220, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
-        mapHintText = this.add.text(220, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
+        this.add.rectangle(allCompleted ? 240 : 220, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
+        mapHintText = this.add.text(allCompleted ? 240 : 220, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
     }
 
     function movePlayerTo(tx, ty, location, needsPuzzle) {
@@ -254,7 +237,7 @@
         var duration = 800;
         if (location) {
             if (location.name === 'За рекой') duration = 2000;
-            else if (location.name === 'Причал' && locations[1].completed) duration = 2000;
+            else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
         }
         scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
             isMoving = false;
@@ -391,7 +374,6 @@
                 }
             }
         }
-        // Неудачный свайп — без покраски, просто возврат
         dragIcon.clearTint();
         dragIcon.x = dragStartX;
         dragIcon.y = dragStartY;
@@ -523,8 +505,6 @@
                 playerContainer.y = locations[1].y;
                 lastPlayerLoc = {x: locations[1].x, y: locations[1].y};
             }
-        } else if (completedLocation.name === 'Причал' && locations[1].completed && !locations[2].completed) {
-            newKey = 'zhenya';
         }
         if (oldSprite.texture.key === newKey) return;
         var scene = game.scene.scenes[0];
@@ -584,6 +564,12 @@
             return;
         }
         var scene = game.scene.scenes[0];
+        // После поражения сдвигаем фигурку вниз-влево, чтобы она не загораживала иконку
+        if (playerContainer) {
+            playerContainer.x = 40;
+            playerContainer.y = 450;
+            lastPlayerLoc = {x: 40, y: 450};
+        }
         var msg = 'Уровень провален! -1 жизнь.\nОсталось жизней: ' + lives;
         var loseText = scene.add.text(200,350,msg,{ fontSize:'20px',fill:'#ff6666',fontFamily:'Comfortaa, Arial',fontStyle:'bold', stroke:'#000000',strokeThickness:4,align:'center' }).setOrigin(0.5);
         scene.time.delayedCall(2500, function(){
