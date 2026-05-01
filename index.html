@@ -39,11 +39,12 @@
     var playerContainer;
     var dialogBg, dialogText, playButton;
     var isMoving = false;
+    var lastPlayerLoc = null; // запоминаем последнюю позицию игрока
 
     var locations = [
-        { name:'Причал',        x:320, y:500, unlocked:true,  completed:false, targetType:'pripas',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle' },
-        { name:'За рекой',      x:320, y:130, unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle' },
-        { name:'Великий Новгород', x:100, y:220, unlocked:false, completed:false, targetType:'kirpich', targetCount:20, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle' }
+        { name:'Причал',        x:280, y:520, unlocked:true,  completed:false, targetType:'bochki',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle' },
+        { name:'За рекой',      x:320, y:100, unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle' },
+        { name:'Великий Новгород', x:100, y:250, unlocked:false, completed:false, targetType:'kamen', targetCount:20, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle' }
     ];
     var currentLocation = null;
     var livesText, lives=5, maxLives=5, restoreTimer=null;
@@ -51,11 +52,11 @@
     var puzzleActive = false;
     var ROWS=6, COLS=6, CELL_SIZE=55;
     var TYPES = {
-        pripas:  { name:'Припасы',   img:'pripas55',   plural:'припасов' },
-        gusli:   { name:'Части гуслей', img:'gusli55',    plural:'частей гуслей' },
-        kirpich: { name:'Стройблоки',  img:'kirpich55',  plural:'стройблоков' },
-        pero:    { name:'Перо',       img:'pero55',     plural:'перьев' },
-        meshocek:{ name:'Монеты',     img:'meshocek55', plural:'мешочков' }
+        bochki:  { name:'Бочки',   img:'pripas55',   plural:'бочек' },
+        gusli:   { name:'Струны и колки', img:'gusli55',    plural:'струн и колков' },
+        kamen:   { name:'Камни',   img:'kirpich55',  plural:'камней' },
+        pero:    { name:'Перо',    img:'pero55',     plural:'перьев' },
+        meshocek:{ name:'Монеты',  img:'meshocek55', plural:'мешочков' }
     };
     var TYPE_KEYS = Object.keys(TYPES);
     var grid = [];
@@ -65,6 +66,7 @@
     var dragIcon = null;
     var dragStartX=0, dragStartY=0;
     var dragPointerStartX=0, dragPointerStartY=0;
+    var dragLocked = false; // защита от двойного захвата
 
     function preloadAssets() {
         this.load.image('mapBG_start', 'novgorod_map_start.png');
@@ -111,11 +113,10 @@
         var scene = this;
         scene.children.removeAll(true);
         var bg = scene.add.image(200, 350, 'prolog').setDisplaySize(400, 700);
-        var text = scene.add.text(200, 500, 'Женя заснул с книжкой былин в руках.\nЕму снится Древний Новгород…\n\n[Нажми, чтобы продолжить]', {
+        var text = scene.add.text(200, 580, 'Женя заснул с книжкой былин...\nЕму снится Древний Новгород.\n\n[Нажми, чтобы продолжить]', {
             fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#000000aa', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5);
-        // Ждём клика мыши или касания
         scene.input.once('pointerdown', function(){
             drawMap.call(scene);
         });
@@ -125,14 +126,13 @@
         dialogText.setText(msg);
         dialogBg.setVisible(true);
         dialogText.setVisible(true);
-        // Убираем старый портрет, если есть
         if (dialogBg.portrait) {
             dialogBg.portrait.destroy();
             dialogBg.portrait = null;
         }
         if (portraitKey) {
             var scene = game.scene.scenes[0];
-            var portrait = scene.add.image(120, 598, portraitKey);
+            var portrait = scene.add.image(70, 620, portraitKey);
             if (portraitKey === 'sadko') {
                 portrait.setDisplaySize(63, 120);
             } else {
@@ -166,7 +166,12 @@
             if (!loc.unlocked) return;
             var icon = self.add.image(loc.x, loc.y, loc.icon);
             icon.setInteractive();
-            if (loc.completed) icon.setAlpha(0.5);
+            // Яркость: пройденные — 0.5, активные — 1.0
+            if (loc.completed) {
+                icon.setAlpha(0.5);
+            } else {
+                icon.setAlpha(1.0);
+            }
             var txt = loc.name;
             var temp = self.add.text(0,0,txt,{ fontSize:'15px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', stroke:'#000000', strokeThickness:4 });
             var tw=temp.width, th=temp.height; temp.destroy();
@@ -181,12 +186,24 @@
             });
         });
 
-        // Стартовая позиция Жени — НЕ на причале, а на берегу
-        var startLoc = locations[0];
-        playerContainer = this.add.container(200, 400);
+        // Определяем стартовую позицию
+        var startX = lastPlayerLoc ? lastPlayerLoc.x : 80;
+        var startY = lastPlayerLoc ? lastPlayerLoc.y : 380;
+        playerContainer = this.add.container(startX, startY);
         var zhenyaSprite = this.add.image(0,0,'zhenya'); zhenyaSprite.setDisplaySize(120,120);
         playerContainer.add(zhenyaSprite);
         playerContainer.currentSprite = zhenyaSprite;
+
+        // Если все локации пройдены — показываем кнопку для эпилога
+        if (allCompleted) {
+            var dreamBtn = this.add.text(200, 670, '🌟 Смотреть сон 🌟', {
+                fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+                backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
+            }).setOrigin(0.5).setInteractive();
+            dreamBtn.on('pointerdown', function(){
+                showEpilogue();
+            });
+        }
 
         musicBtn = this.add.text(380, 10, musicOn ? '🔊' : '🔇', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
         musicBtn.on('pointerdown', function(){
@@ -195,18 +212,19 @@
             musicBtn.setText(musicOn ? '🔊' : '🔇');
         });
 
-        dialogBg = this.add.rectangle(200,620,360,110,0x000000,0.75).setVisible(false);
-        dialogText = this.add.text(200,598,'',{ fontSize:'14px',fill:'#ffffff',align:'center',wordWrap:{width:320},fontFamily:'Comfortaa, Arial',fontStyle:'bold',stroke:'#000000',strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-        playButton = this.add.text(200,652,'⚔️ ИГРАТЬ ⚔️',{ fontSize:'18px',fill:'#ffd700',fontFamily:'Comfortaa, Arial',fontStyle:'bold',backgroundColor:'#333333',padding:{x:12,y:6},stroke:'#000000',strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
+        // Диалоговое окно — смещено вправо для портрета слева
+        dialogBg = this.add.rectangle(230, 620, 300, 110, 0x000000, 0.75).setVisible(false);
+        dialogText = this.add.text(230, 598, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:280}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
+        playButton = this.add.text(230, 652, '⚔️ ИГРАТЬ ⚔️', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
         playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
-        livesText = this.add.text(10,45,'❤️ x '+lives,{ fontSize:'18px',fill:'#ffffff',fontFamily:'Comfortaa, Arial',fontStyle:'bold',stroke:'#000000',strokeThickness:3 });
+        livesText = this.add.text(10, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
         var hint = 'Выбери локацию';
-        var htemp = this.add.text(0,0,hint,{ fontSize:'14px',fill:'#ffffff',align:'center',fontFamily:'Comfortaa, Arial',fontStyle:'bold',stroke:'#000000',strokeThickness:3 });
+        var htemp = this.add.text(0,0,hint,{ fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
         var hw=htemp.width, hh=htemp.height; htemp.destroy();
-        this.add.rectangle(200,28,hw+16,hh+10,0x000000,0.6).setOrigin(0.5);
-        this.add.text(200,28,hint,{ fontSize:'14px',fill:'#ffffff',align:'center',fontFamily:'Comfortaa, Arial',fontStyle:'bold',stroke:'#000000',strokeThickness:3 }).setOrigin(0.5);
+        this.add.rectangle(200, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
+        this.add.text(200, 28, hint, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
     }
 
     function movePlayerTo(tx, ty, location, needsPuzzle) {
@@ -214,6 +232,8 @@
         hideDialog();
         currentLocation = null;
         tx=Math.round(tx); ty=Math.round(ty);
+        // Запоминаем позицию
+        lastPlayerLoc = {x: tx, y: ty};
         var scene = game.scene.scenes[0];
         var duration = 800;
         if (location) {
@@ -252,7 +272,7 @@
         var startX = Math.round((400 - gridWidth) / 2);
         var startY = Math.round((700 - gridHeight) / 2 + 20);
 
-        scene.add.rectangle(200, startY + gridHeight / 2, gridWidth + 20, gridHeight + 20, 0x000000, 0.65).setOrigin(0.5);
+        scene.add.rectangle(200, startY + gridHeight / 2, gridWidth + 10, gridHeight + 10, 0x000000, 0.65).setOrigin(0.5);
 
         var titleText = location.name;
         var titleStyle = { fontSize:'22px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', stroke:'#000000', strokeThickness:4 };
@@ -308,7 +328,7 @@
     }
 
     function onDragStart(pointer) {
-        if (!puzzleActive || dragIcon) return;
+        if (!puzzleActive || dragIcon || dragLocked) return;
         var icon = this;
         dragIcon = icon;
         dragStartX = icon.x; dragStartY = icon.y;
@@ -333,10 +353,10 @@
         scene.input.off('pointerup', onDragEnd);
         var dx = pointer.x - dragPointerStartX;
         var dy = pointer.y - dragPointerStartY;
-        var threshold = CELL_SIZE * 0.6; // увеличен порог для стабильности
-        var targetRow = dragIcon.row, targetCol = dragIcon.col;
+        var threshold = CELL_SIZE * 0.6;
 
         if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+            var targetRow = dragIcon.row, targetCol = dragIcon.col;
             if (Math.abs(dx) > Math.abs(dy)) {
                 targetCol += (dx > 0) ? 1 : -1;
             } else {
@@ -346,19 +366,23 @@
                 var targetIcon = grid[targetRow][targetCol];
                 if (targetIcon) {
                     swapIcons(dragIcon, targetIcon);
-                    dragIcon.clearTint(); dragIcon = null; document.body.style.overflow = 'auto';
+                    dragIcon.clearTint();
+                    dragIcon = null;
+                    document.body.style.overflow = 'auto';
+                    dragLocked = true;
+                    scene.time.delayedCall(200, function(){ dragLocked = false; });
                     return;
                 }
             }
         }
-        // Неудачный свайп — красное мигание
+        // Неудачный свайп — без покраски, просто возврат
         dragIcon.clearTint();
-        dragIcon.setTint(0xff0000);
-        scene.time.delayedCall(100, function(){ if (dragIcon) dragIcon.clearTint(); });
-        scene.tweens.add({ targets: dragIcon, x: dragStartX, y: dragStartY, duration: 150,
-            onComplete: function(){ dragIcon = null; document.body.style.overflow = 'auto'; }
-        });
+        dragIcon.x = dragStartX;
+        dragIcon.y = dragStartY;
         dragIcon = null;
+        document.body.style.overflow = 'auto';
+        dragLocked = true;
+        scene.time.delayedCall(200, function(){ dragLocked = false; });
     }
 
     function swapIcons(c1, c2) {
@@ -444,6 +468,7 @@
             if (currentLocation) {
                 currentLocation.completed = true;
                 unlockNext(currentLocation);
+                updatePlayerSprite(currentLocation);
                 var factText = scene.add.text(200, 380, '✅ Миссия выполнена!', {
                     fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:340},
                     backgroundColor:'#000000cc', padding:{x:12,y:12},
@@ -451,9 +476,7 @@
                 }).setOrigin(0.5);
                 scene.time.delayedCall(2500, function(){
                     factText.destroy();
-                    updatePlayerSprite(currentLocation);
-                    if (allLocationsCompleted()) showEpilogue();
-                    else drawMap.call(scene);
+                    drawMap.call(scene);
                 });
             }
         } else if (movesLeft <= 0) loseLevel();
@@ -475,13 +498,18 @@
         var oldSprite = playerContainer.currentSprite;
         if (!oldSprite) return;
         var newKey = 'zhenya';
-        // Определяем, какой спрайт нужен
         if (completedLocation.name === 'Причал' && !locations[1].completed) {
-            newKey = 'zhenya_boat'; // Женя один в ладье, плывёт к За рекой
+            newKey = 'zhenya_boat';
         } else if (completedLocation.name === 'За рекой') {
-            newKey = 'zhenya_sadko_boat'; // Женя и Садко в ладье, возвращаются к Причалу
+            newKey = 'zhenya_sadko_boat';
+            // После победы на За рекой — перемещаемся к иконке За рекой
+            if (playerContainer) {
+                playerContainer.x = locations[1].x;
+                playerContainer.y = locations[1].y;
+                lastPlayerLoc = {x: locations[1].x, y: locations[1].y};
+            }
         } else if (completedLocation.name === 'Причал' && locations[1].completed && !locations[2].completed) {
-            newKey = 'zhenya'; // После возврата к Причалу, идём пешком в Новгород
+            newKey = 'zhenya';
         }
         if (oldSprite.texture.key === newKey) return;
         var scene = game.scene.scenes[0];
@@ -500,20 +528,57 @@
         var scene = game.scene.scenes[0];
         scene.children.removeAll(true);
         var bg = scene.add.image(200, 350, 'epilog').setDisplaySize(400, 700);
-        var text = scene.add.text(200, 500, 'Женя открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом на подушке.\nМальчик улыбнулся…', {
+        var text = scene.add.text(200, 580, 'Женя открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…', {
             fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
-            backgroundColor:'#000000aa', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
+            backgroundColor:'#000000cc', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5);
+        // Кнопка начать заново
+        var restartBtn = scene.add.text(200, 660, '🔄 Начать заново', {
+            fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+            backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
+        }).setOrigin(0.5).setInteractive();
+        restartBtn.on('pointerdown', function(){
+            location.reload();
+        });
+    }
+
+    function showBadEnding() {
+        var scene = game.scene.scenes[0];
+        scene.children.removeAll(true);
+        var bg = scene.add.image(200, 350, 'epilog').setDisplaySize(400, 700);
+        // Затемняем
+        scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
+        var text = scene.add.text(200, 580, 'Женя вздрогнул и проснулся...\nЭто был страшный сон.\nПопробовать ещё раз?', {
+            fontSize:'16px', fill:'#ffcccc', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+            backgroundColor:'#000000cc', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
+        }).setOrigin(0.5);
+        var tryAgainBtn = scene.add.text(200, 660, '🔄 Попробовать ещё раз', {
+            fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+            backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
+        }).setOrigin(0.5).setInteractive();
+        tryAgainBtn.on('pointerdown', function(){
+            location.reload();
+        });
     }
 
     function loseLevel() {
         puzzleActive = false;
-        lives--; if (lives<0) lives=0;
+        lives--;
+        if (lives < 0) lives = 0;
         if (livesText) livesText.setText('❤️ x '+lives);
+        if (lives <= 0) {
+            // Плохая концовка
+            showBadEnding();
+            return;
+        }
         var scene = game.scene.scenes[0];
-        var msg = (lives>0) ? 'Уровень провален! -1 жизнь.' : 'Жизни кончились! Жди восстановления.';
+        var msg = 'Уровень провален! -1 жизнь.\nОсталось жизней: ' + lives;
         var loseText = scene.add.text(200,350,msg,{ fontSize:'20px',fill:'#ff6666',fontFamily:'Comfortaa, Arial',fontStyle:'bold', stroke:'#000000',strokeThickness:4,align:'center' }).setOrigin(0.5);
-        scene.time.delayedCall(2500, function(){ loseText.destroy(); drawMap.call(scene); });
+        scene.time.delayedCall(2500, function(){
+            loseText.destroy();
+            // Не сбрасываем lastPlayerLoc, чтобы персонаж остался на месте
+            drawMap.call(scene);
+        });
     }
 </script>
 </body>
