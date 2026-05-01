@@ -40,7 +40,6 @@
     var dialogBg, dialogText, playButton;
     var isMoving = false;
 
-    // Координаты для карты 400x700
     var locations = [
         { name:'Причал',        x:320, y:500, unlocked:true,  completed:false, targetType:'pripas',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle' },
         { name:'За рекой',      x:320, y:130, unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle' },
@@ -112,13 +111,45 @@
         var scene = this;
         scene.children.removeAll(true);
         var bg = scene.add.image(200, 350, 'prolog').setDisplaySize(400, 700);
-        var text = scene.add.text(200, 500, 'Женя заснул с книжкой былин в руках.\nЕму снится Древний Новгород…', {
+        var text = scene.add.text(200, 500, 'Женя заснул с книжкой былин в руках.\nЕму снится Древний Новгород…\n\n[Нажми, чтобы продолжить]', {
             fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#000000aa', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5);
-        scene.time.delayedCall(3000, function(){
+        // Ждём клика мыши или касания
+        scene.input.once('pointerdown', function(){
             drawMap.call(scene);
         });
+    }
+
+    function showDialog(msg, portraitKey) {
+        dialogText.setText(msg);
+        dialogBg.setVisible(true);
+        dialogText.setVisible(true);
+        // Убираем старый портрет, если есть
+        if (dialogBg.portrait) {
+            dialogBg.portrait.destroy();
+            dialogBg.portrait = null;
+        }
+        if (portraitKey) {
+            var scene = game.scene.scenes[0];
+            var portrait = scene.add.image(120, 598, portraitKey);
+            if (portraitKey === 'sadko') {
+                portrait.setDisplaySize(63, 120);
+            } else {
+                portrait.setDisplaySize(120, 120);
+            }
+            dialogBg.portrait = portrait;
+        }
+    }
+
+    function hideDialog() {
+        dialogBg.setVisible(false);
+        dialogText.setVisible(false);
+        playButton.setVisible(false);
+        if (dialogBg.portrait) {
+            dialogBg.portrait.destroy();
+            dialogBg.portrait = null;
+        }
     }
 
     function drawMap() {
@@ -150,8 +181,9 @@
             });
         });
 
+        // Стартовая позиция Жени — НЕ на причале, а на берегу
         var startLoc = locations[0];
-        playerContainer = this.add.container(startLoc.x, startLoc.y);
+        playerContainer = this.add.container(200, 400);
         var zhenyaSprite = this.add.image(0,0,'zhenya'); zhenyaSprite.setDisplaySize(120,120);
         playerContainer.add(zhenyaSprite);
         playerContainer.currentSprite = zhenyaSprite;
@@ -179,7 +211,7 @@
 
     function movePlayerTo(tx, ty, location, needsPuzzle) {
         isMoving = true;
-        dialogBg.setVisible(false); dialogText.setVisible(false); playButton.setVisible(false);
+        hideDialog();
         currentLocation = null;
         tx=Math.round(tx); ty=Math.round(ty);
         var scene = game.scene.scenes[0];
@@ -194,18 +226,16 @@
                 currentLocation = location;
                 var p = TYPES[location.targetType].plural;
                 if (location.name === 'Причал') {
-                    showDialog('«Причал»\nСтранник просит собрать ' + location.targetCount + ' ' + p + '.\nСадко в беде на том берегу!');
+                    showDialog('«Причал»\nСтранник просит собрать ' + location.targetCount + ' ' + p + '.\nСадко в беде на том берегу!', 'starets');
                 } else if (location.name === 'За рекой') {
                     showDialog('«За рекой»\nСобери ' + location.targetCount + ' ' + p + '.\nНужно сломать гусли, чтобы остановить царя!');
                 } else if (location.name === 'Великий Новгород') {
-                    showDialog('«Великий Новгород»\nСобери ' + location.targetCount + ' ' + p + '.\nПостроим храм в честь спасения!');
+                    showDialog('«Великий Новгород»\nСобери ' + location.targetCount + ' ' + p + '.\nПостроим храм в честь спасения!', 'sadko');
                 }
                 playButton.setVisible(true);
             }
         }});
     }
-
-    function showDialog(msg) { dialogText.setText(msg); dialogBg.setVisible(true); dialogText.setVisible(true); }
 
     function startPuzzle(location) {
         puzzleActive = true;
@@ -303,7 +333,7 @@
         scene.input.off('pointerup', onDragEnd);
         var dx = pointer.x - dragPointerStartX;
         var dy = pointer.y - dragPointerStartY;
-        var threshold = CELL_SIZE / 2;
+        var threshold = CELL_SIZE * 0.6; // увеличен порог для стабильности
         var targetRow = dragIcon.row, targetCol = dragIcon.col;
 
         if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
@@ -321,6 +351,7 @@
                 }
             }
         }
+        // Неудачный свайп — красное мигание
         dragIcon.clearTint();
         dragIcon.setTint(0xff0000);
         scene.time.delayedCall(100, function(){ if (dragIcon) dragIcon.clearTint(); });
@@ -420,9 +451,9 @@
                 }).setOrigin(0.5);
                 scene.time.delayedCall(2500, function(){
                     factText.destroy();
+                    updatePlayerSprite(currentLocation);
                     if (allLocationsCompleted()) showEpilogue();
-                    else updatePlayerSprite();
-                    drawMap.call(scene);
+                    else drawMap.call(scene);
                 });
             }
         } else if (movesLeft <= 0) loseLevel();
@@ -439,21 +470,28 @@
         return locations.every(function(l){ return l.completed; });
     }
 
-    function updatePlayerSprite() {
+    function updatePlayerSprite(completedLocation) {
         if (!playerContainer) return;
         var oldSprite = playerContainer.currentSprite;
         if (!oldSprite) return;
         var newKey = 'zhenya';
-        if (locations[1].completed && !locations[2].completed) newKey = 'zhenya_boat';
-        if (locations[1].completed && locations[0].completed && !locations[2].completed) newKey = 'zhenya_sadko_boat';
+        // Определяем, какой спрайт нужен
+        if (completedLocation.name === 'Причал' && !locations[1].completed) {
+            newKey = 'zhenya_boat'; // Женя один в ладье, плывёт к За рекой
+        } else if (completedLocation.name === 'За рекой') {
+            newKey = 'zhenya_sadko_boat'; // Женя и Садко в ладье, возвращаются к Причалу
+        } else if (completedLocation.name === 'Причал' && locations[1].completed && !locations[2].completed) {
+            newKey = 'zhenya'; // После возврата к Причалу, идём пешком в Новгород
+        }
         if (oldSprite.texture.key === newKey) return;
         var scene = game.scene.scenes[0];
         playerContainer.remove(oldSprite, true);
         var newSprite = scene.add.image(0,0, newKey);
-        newSprite.setDisplaySize(
-            newKey === 'zhenya_sadko_boat' ? 137 : 120,
-            newKey === 'zhenya_sadko_boat' ? 120 : 120
-        );
+        if (newKey === 'zhenya_sadko_boat') {
+            newSprite.setDisplaySize(137, 120);
+        } else {
+            newSprite.setDisplaySize(120, 120);
+        }
         playerContainer.add(newSprite);
         playerContainer.currentSprite = newSprite;
     }
