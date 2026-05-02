@@ -42,16 +42,10 @@ var isMoving = false;
 var lastPlayerLoc = null;
 var mapHintText = null;
 var progressDots = [];
-
-// Артефакты коллекции
 var artifactCollected = { bochka: false, gusli: false, krest: false };
 
-// Звуки пока отключены, но переменные объявлены для будущего использования
-var sfxSwipe = null, sfxMatch = null, sfxWin = null, sfxLose = null, sfxWater = null;
-var themeNovgorod = null, themeUnderwater = null, themeVictory = null;
-
 var locations = [
-    { name:'Причал',        x:200, y:540, unlocked:true,  completed:false, targetType:'bochki',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle' },
+    { name:'Причал',        x:160, y:540, unlocked:true,  completed:false, targetType:'bochki',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle' },
     { name:'За рекой',      x:350, y:130, unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle' },
     { name:'Великий Новгород', x:120, y:140, unlocked:false, completed:false, targetType:'kamen', targetCount:20, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle' }
 ];
@@ -77,16 +71,15 @@ var dragStartX=0, dragStartY=0;
 var dragPointerStartX=0, dragPointerStartY=0;
 var dragLocked = false;
 
-// Плавные маршруты
 const ROUTES = {
     'prichal_to_za_rekoy': [
-        {x: 250, y: 520}, {x: 280, y: 350}, {x: 320, y: 200}, {x: 350, y: 130}
+        {x: 200, y: 520}, {x: 260, y: 320}, {x: 320, y: 180}, {x: 350, y: 130}
     ],
     'za_rekoy_to_prichal': [
-        {x: 320, y: 200}, {x: 280, y: 350}, {x: 250, y: 520}, {x: 200, y: 540}
+        {x: 320, y: 180}, {x: 260, y: 320}, {x: 200, y: 520}, {x: 160, y: 540}
     ],
     'prichal_to_novgorod': [
-        {x: 180, y: 520}, {x: 120, y: 350}, {x: 120, y: 180}
+        {x: 140, y: 500}, {x: 100, y: 320}, {x: 120, y: 180}
     ]
 };
 
@@ -111,19 +104,12 @@ function preloadAssets() {
     this.load.image('sadko', 'sadko.png');
     this.load.image('prolog', 'prolog_zasypanie.png');
     this.load.image('epilog', 'epilog_prosypanie.png');
-    // Новые ресурсы (если файла нет, игра не упадёт, но функция не сработает)
-    if (this.textures.exists('epilog_udivlenie')) {
-        this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
-    }
-    // Попытка загрузить иконки коллекции (если нет файлов — просто будут пустые места)
+    this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
     this.load.image('artifact_bochka', 'artifact_bochka.png');
     this.load.image('artifact_gusli', 'artifact_gusli.png');
     this.load.image('artifact_krest', 'artifact_krest.png');
     this.load.image('particle_star', 'particle_star.png');
     this.load.audio('bgMusic', 'bg_music.mp3');
-    // Звуки пока закомментированы
-    // this.load.audio('sfxSwipe', 'sfx_swipe.mp3');
-    // ...
 }
 
 function createGame() {
@@ -197,8 +183,9 @@ function drawMap() {
     locations.forEach(function(loc){
         if (!loc.unlocked) return;
         var icon = self.add.image(loc.x, loc.y, loc.icon);
+        // Исправленная интерактивная зона (центр в (0,0), радиус 40)
         icon.setInteractive(
-            new Phaser.Geom.Circle(40, 40, 40),
+            new Phaser.Geom.Circle(0, 0, 40),
             Phaser.Geom.Circle.Contains
         );
         if (loc.completed) {
@@ -267,12 +254,7 @@ function drawMap() {
         });
     }
 
-    var helpBtn = this.add.text(30, 670, '?', {
-        fontSize:'20px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
-        backgroundColor:'#333333', padding:{x:6,y:4}
-    }).setOrigin(0.5).setInteractive();
-    helpBtn.on('pointerdown', showTutorial);
-
+    // Кнопка "?" только в уровнях, здесь убрана
     musicBtn = this.add.text(380, 10, musicOn ? '🔊' : '🔇', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
     musicBtn.on('pointerdown', function(){
         musicOn = !musicOn;
@@ -386,10 +368,9 @@ function showEnding() {
     var allArtifacts = artifactCollected.bochka && artifactCollected.gusli && artifactCollected.krest;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
-    // Используем удивлённый задник, если он есть и артефакты не все собраны
-    var bgKey = (allArtifacts || !scene.textures.exists('epilog_udivlenie')) ? 'epilog' : 'epilog_udivlenie';
+    var bgKey = allArtifacts ? 'epilog' : 'epilog_udivlenie';
     var bg = scene.add.image(200, 350, bgKey).setDisplaySize(400, 700);
-    if (!allArtifacts && scene.textures.exists('epilog_udivlenie')) {
+    if (!allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
     }
     var textContent = allArtifacts ?
@@ -447,6 +428,13 @@ function startPuzzle(location) {
     movesText = scene.add.text(200, 100, movesStr, mStyle).setOrigin(0.5);
     mTmp.destroy();
 
+    // Кнопка обучения "?" в уровне
+    var helpBtn = scene.add.text(40, 10, '?', {
+        fontSize:'20px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+        backgroundColor:'#333333', padding:{x:6,y:4}
+    }).setOrigin(0,0).setInteractive();
+    helpBtn.on('pointerdown', showTutorial);
+
     var musicBtnLevel = scene.add.text(380, 10, musicOn ? '🔊' : '🔇', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
     musicBtnLevel.on('pointerdown', function(){
         musicOn = !musicOn;
@@ -479,8 +467,221 @@ function startPuzzle(location) {
     });
 }
 
-// ... (остальные функции: onDragStart, onDragMove, onDragEnd, swapIcons, checkMatches, removeMatches, fillEmptySpaces, unlockNext, updatePlayerSprite, loseLevel) оставлены без изменений, как в предыдущем полном коде ...
-// Я привёл только основные функции для краткости, но в реальном коде они все присутствуют.
+function onDragStart(pointer) {
+    if (!puzzleActive || dragIcon || dragLocked) return;
+    var icon = this;
+    dragIcon = icon;
+    dragStartX = icon.x; dragStartY = icon.y;
+    dragPointerStartX = pointer.x; dragPointerStartY = pointer.y;
+    icon.setTint(0xdddddd);
+    document.body.style.overflow = 'hidden';
+    var scene = game.scene.scenes[0];
+    scene.input.on('pointermove', onDragMove);
+    scene.input.on('pointerup', onDragEnd);
+}
+
+function onDragMove(pointer) {
+    if (!dragIcon) return;
+    dragIcon.x = dragStartX + pointer.x - dragPointerStartX;
+    dragIcon.y = dragStartY + pointer.y - dragPointerStartY;
+}
+
+function onDragEnd(pointer) {
+    if (!dragIcon) return;
+    var scene = game.scene.scenes[0];
+    scene.input.off('pointermove', onDragMove);
+    scene.input.off('pointerup', onDragEnd);
+    var dx = pointer.x - dragPointerStartX;
+    var dy = pointer.y - dragPointerStartY;
+    var threshold = CELL_SIZE * 0.6;
+
+    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+        var targetRow = dragIcon.row, targetCol = dragIcon.col;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            targetCol += (dx > 0) ? 1 : -1;
+        } else {
+            targetRow += (dy > 0) ? 1 : -1;
+        }
+        if (targetRow >= 0 && targetRow < ROWS && targetCol >= 0 && targetCol < COLS) {
+            var targetIcon = grid[targetRow][targetCol];
+            if (targetIcon) {
+                swapIcons(dragIcon, targetIcon);
+                dragIcon.clearTint();
+                dragIcon = null;
+                document.body.style.overflow = 'auto';
+                dragLocked = true;
+                scene.time.delayedCall(200, function(){ dragLocked = false; });
+                return;
+            }
+        }
+    }
+    dragIcon.clearTint();
+    dragIcon.x = dragStartX;
+    dragIcon.y = dragStartY;
+    dragIcon = null;
+    document.body.style.overflow = 'auto';
+    dragLocked = true;
+    scene.time.delayedCall(200, function(){ dragLocked = false; });
+}
+
+function swapIcons(c1, c2) {
+    var r1 = c1.row, c1c = c1.col;
+    var r2 = c2.row, c2c = c2.col;
+    grid[r1][c1c] = c2; grid[r2][c2c] = c1;
+    c1.row = r2; c1.col = c2c; c2.row = r1; c2.col = c1c;
+    var scene = game.scene.scenes[0];
+    var gw = COLS * CELL_SIZE, gh = ROWS * CELL_SIZE;
+    var sx = Math.round((400 - gw) / 2), sy = Math.round((700 - gh) / 2 + 20);
+    scene.tweens.add({ targets: c1, x: sx + c1.col * CELL_SIZE + CELL_SIZE/2, y: sy + c1.row * CELL_SIZE + CELL_SIZE/2, duration: 150 });
+    scene.tweens.add({ targets: c2, x: sx + c2.col * CELL_SIZE + CELL_SIZE/2, y: sy + c2.row * CELL_SIZE + CELL_SIZE/2, duration: 150 });
+    movesLeft--;
+    if (movesText) { movesText.setText('Ходы: ' + movesLeft); movesText.setStyle({ fill: movesLeft <= 5 ? '#ff6666' : '#ffffff' }); }
+    scene.time.delayedCall(180, checkMatches);
+}
+
+function checkMatches() {
+    var toRemove = [];
+    for (var r=0; r<ROWS; r++) {
+        for (var c=0; c<COLS-2; c++) {
+            var a = grid[r][c]; if (!a) continue;
+            if (a.artifactType === grid[r][c+1]?.artifactType && a.artifactType === grid[r][c+2]?.artifactType)
+                toRemove.push(a, grid[r][c+1], grid[r][c+2]);
+        }
+    }
+    for (var c=0; c<COLS; c++) {
+        for (var r=0; r<ROWS-2; r++) {
+            var a = grid[r][c]; if (!a) continue;
+            if (a.artifactType === grid[r+1]?.[c]?.artifactType && a.artifactType === grid[r+2]?.[c]?.artifactType)
+                toRemove.push(a, grid[r+1][c], grid[r+2][c]);
+        }
+    }
+    if (toRemove.length > 0) removeMatches(toRemove);
+    else if (movesLeft <= 0) loseLevel();
+}
+
+function removeMatches(matches) {
+    var scene = game.scene.scenes[0];
+    matches.forEach(function(icon){
+        if (!icon) return;
+        if (icon.artifactType === targetType) {
+            collectedCount++;
+            var tp = TYPES[targetType].plural;
+            scoreText.setText('Собрано ' + tp + ': ' + collectedCount + ' / ' + targetCount);
+        }
+        scene.tweens.add({ targets: icon, scaleX:0, scaleY:0, alpha:0, duration:200, onComplete: function(){ icon.destroy(); } });
+        grid[icon.row][icon.col] = null;
+    });
+    scene.time.delayedCall(300, fillEmptySpaces);
+}
+
+function fillEmptySpaces() {
+    var scene = game.scene.scenes[0];
+    var gw = COLS * CELL_SIZE, gh = ROWS * CELL_SIZE;
+    var sx = Math.round((400 - gw) / 2), sy = Math.round((700 - gh) / 2 + 20);
+    for (var c=0; c<COLS; c++) {
+        var emptyRow = ROWS-1;
+        for (var r=ROWS-1; r>=0; r--) {
+            if (grid[r][c] !== null) {
+                if (r !== emptyRow) {
+                    grid[emptyRow][c] = grid[r][c]; grid[r][c] = null;
+                    grid[emptyRow][c].row = emptyRow; grid[emptyRow][c].col = c;
+                    scene.tweens.add({ targets: grid[emptyRow][c], y: sy + emptyRow * CELL_SIZE + CELL_SIZE/2, duration: 200 });
+                }
+                emptyRow--;
+            }
+        }
+    }
+    for (var c=0; c<COLS; c++) {
+        for (var r=0; r<ROWS; r++) {
+            if (grid[r][c] === null) {
+                var typeKey = TYPE_KEYS[Math.floor(Math.random() * TYPE_KEYS.length)];
+                var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
+                var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
+                icon.setInteractive(); icon.row = r; icon.col = c; icon.artifactType = typeKey;
+                icon.on('pointerdown', onDragStart); grid[r][c] = icon;
+            }
+        }
+    }
+    if (collectedCount >= targetCount) {
+        puzzleActive = false;
+        if (currentLocation) {
+            currentLocation.completed = true;
+            // Выдача артефакта
+            if (currentLocation.name === 'Причал') artifactCollected.bochka = true;
+            else if (currentLocation.name === 'За рекой') artifactCollected.gusli = true;
+            else if (currentLocation.name === 'Великий Новгород') artifactCollected.krest = true;
+            unlockNext(currentLocation);
+            updatePlayerSprite(currentLocation);
+            var factText = scene.add.text(200, 380, '✅ Миссия выполнена!', {
+                fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:340},
+                backgroundColor:'#000000cc', padding:{x:12,y:12},
+                fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3
+            }).setOrigin(0.5);
+            scene.time.delayedCall(2500, function(){
+                factText.destroy();
+                drawMap.call(scene);
+            });
+        }
+    } else if (movesLeft <= 0) loseLevel();
+    else scene.time.delayedCall(200, checkMatches);
+}
+
+function unlockNext(loc) {
+    for (var i=0; i<locations.length-1; i++) {
+        if (locations[i] === loc) { locations[i+1].unlocked = true; break; }
+    }
+}
+
+function updatePlayerSprite(completedLocation) {
+    if (!playerContainer) return;
+    var oldSprite = playerContainer.currentSprite;
+    if (!oldSprite) return;
+    var newKey = 'zhenya';
+    if (completedLocation.name === 'Причал' && !locations[1].completed) {
+        newKey = 'zhenya_boat';
+    } else if (completedLocation.name === 'За рекой') {
+        newKey = 'zhenya_sadko_boat';
+        if (playerContainer) {
+            playerContainer.x = locations[1].x;
+            playerContainer.y = locations[1].y;
+            lastPlayerLoc = {x: locations[1].x, y: locations[1].y};
+        }
+    }
+    if (oldSprite.texture.key === newKey) return;
+    var scene = game.scene.scenes[0];
+    playerContainer.remove(oldSprite, true);
+    var newSprite = scene.add.image(0,0, newKey);
+    if (newKey === 'zhenya_sadko_boat') {
+        newSprite.setDisplaySize(137, 120);
+    } else {
+        newSprite.setDisplaySize(120, 120);
+    }
+    playerContainer.add(newSprite);
+    playerContainer.currentSprite = newSprite;
+}
+
+function loseLevel() {
+    puzzleActive = false;
+    lives--;
+    if (lives < 0) lives = 0;
+    if (livesText) livesText.setText('❤️ x '+lives);
+    if (lives <= 0) {
+        showEnding();
+        return;
+    }
+    var scene = game.scene.scenes[0];
+    if (playerContainer) {
+        playerContainer.x = 40;
+        playerContainer.y = 450;
+        lastPlayerLoc = {x: 40, y: 450};
+    }
+    var msg = 'Уровень провален! -1 жизнь.\nОсталось жизней: ' + lives;
+    var loseText = scene.add.text(200,350,msg,{ fontSize:'20px',fill:'#ff6666',fontFamily:'Comfortaa, Arial',fontStyle:'bold', stroke:'#000000',strokeThickness:4,align:'center' }).setOrigin(0.5);
+    scene.time.delayedCall(2500, function(){
+        loseText.destroy();
+        drawMap.call(scene);
+    });
+}
 </script>
 </body>
 </html>
