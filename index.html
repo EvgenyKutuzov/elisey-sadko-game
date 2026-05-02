@@ -128,7 +128,7 @@ function showDialog(msg, portraitKey) {
     }
     if (portraitKey) {
         var scene = game.scene.scenes[0];
-        var portrait = scene.add.image(60, 620, portraitKey);
+        var portrait = scene.add.image(70, 620, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(63, 120);
         } else {
@@ -182,9 +182,9 @@ function drawMap() {
 
         icon.on('pointerdown', function(){
             if (isMoving || puzzleActive) return;
-            if (lives <= 0 && !loc.completed && !loc.isReturn) { showDialog('Нет жизней!'); return; }
-            if (!loc.unlocked) { showDialog('Сначала завершите предыдущую локацию!'); return; }
-            movePlayerTo(loc.x, loc.y, loc, !loc.completed && !loc.isReturn);
+            if (loc.completed) return; // пройденные локации не активны
+            if (lives <= 0 && !loc.isReturn) { showDialog('Нет жизней!'); return; }
+            movePlayerTo(loc.x, loc.y, loc, !loc.isReturn);
         });
     });
 
@@ -203,10 +203,11 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    // Диалоговое окно
-    dialogBg = this.add.rectangle(200, 590, 340, 130, 0x000000, 0.8).setVisible(false);
-    dialogText = this.add.text(220, 580, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:250}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-    playButton = this.add.text(200, 350, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
+    // Диалоговое окно увеличено и сдвинуто
+    dialogBg = this.add.rectangle(200, 620, 360, 160, 0x000000, 0.8).setVisible(false);
+    dialogText = this.add.text(220, 610, '', { fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:270}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
+    // Кнопка "ИГРАТЬ" по центру, выше корабля
+    playButton = this.add.text(200, 310, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
     if (allCompleted) {
@@ -264,20 +265,21 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         if (!location) return;
         currentLocation = location;
 
-        // Возвращение после За рекой -> сначала меняем спрайт, потом диалог
+        // Возвращение после За рекой -> диалог с Садко и открытие Великого Новгорода
         if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
-            // Меняем спрайт на одиночного Женю (без перерисовки карты)
+            // Меняем спрайт на одиночного Женю
             updatePlayerSprite({name:'Причал'});
-            // Ждём 200 мс, чтобы спрайт точно обновился
-            scene.time.delayedCall(200, function(){
-                showDialog('Спасибо тебе, Женя!\nТеперь я построю храм в Новгороде.\nПойдём со мной!', 'sadko');
-            });
+            // Делаем причал и "За рекой" завершёнными
+            locations[0].completed = true;
+            locations[1].completed = true;
             locations[2].unlocked = true;
-            // Оставляем Женю у причала
             lastPlayerLoc = {x: 160, y: 510};
-            if (location.iconSprite) location.iconSprite.setAlpha(1.0);
-            if (location.labelBg) location.labelBg.setAlpha(1.0);
-            if (location.labelText) location.labelText.setAlpha(1.0);
+            // Показываем диалог, а через 2 секунды перерисовываем карту
+            showDialog('Спасибо тебе, Женя!\nТеперь я построю храм в Новгороде.\nПойдём со мной!', 'sadko');
+            scene.time.delayedCall(2000, function(){
+                hideDialog();
+                drawMap.call(scene);
+            });
             return;
         }
 
@@ -596,8 +598,7 @@ function unlockNext(loc) {
     if (loc.name === 'Причал' && !locations[1].unlocked) {
         locations[1].unlocked = true;
     } else if (loc.name === 'За рекой') {
-        locations[0].completed = false;
-        locations[0].isReturn = true;
+        // Теперь возврат управляется вручную при подходе к причалу
     }
 }
 
