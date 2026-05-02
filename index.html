@@ -43,8 +43,6 @@ var lastPlayerLoc = null;
 var mapHintText = null;
 var progressDots = [];
 
-// Пока отключаем загрузку недостающих звуков, чтобы игра запускалась
-// Звуковые эффекты и альтернативные темы появятся позже
 var sfxSwipe = null;
 var sfxMatch = null;
 var sfxWin = null;
@@ -81,7 +79,6 @@ var dragStartX=0, dragStartY=0;
 var dragPointerStartX=0, dragPointerStartY=0;
 var dragLocked = false;
 
-// Маршруты для плавных кривых (сплайнов)
 const ROUTES = {
     'prichal_to_za_rekoy': [
         {x: 250, y: 520}, {x: 280, y: 350}, {x: 320, y: 200}, {x: 350, y: 130}
@@ -116,19 +113,6 @@ function preloadAssets() {
     this.load.image('prolog', 'prolog_zasypanie.png');
     this.load.image('epilog', 'epilog_prosypanie.png');
     this.load.audio('bgMusic', 'bg_music.mp3');
-    // Ниже — всё, что пока не готово. Раскомментируешь по мере создания файлов.
-    // this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
-    // this.load.image('artifact_bochka', 'artifact_bochka.png');
-    // this.load.image('artifact_gusli', 'artifact_gusli.png');
-    // this.load.image('artifact_krest', 'artifact_krest.png');
-    // this.load.audio('sfxSwipe', 'sfx_swipe.mp3');
-    // this.load.audio('sfxMatch', 'sfx_match.mp3');
-    // this.load.audio('sfxWin', 'sfx_win.mp3');
-    // this.load.audio('sfxLose', 'sfx_lose.mp3');
-    // this.load.audio('sfxWater', 'sfx_water.mp3');
-    // this.load.audio('themeNovgorod', 'theme_novgorod.mp3');
-    // this.load.audio('themeUnderwater', 'theme_underwater.mp3');
-    // this.load.audio('themeVictory', 'theme_victory.mp3');
 }
 
 function createGame() {
@@ -137,7 +121,6 @@ function createGame() {
         bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
         bgMusic.play();
     }
-    // Звуки будут добавлены, когда появятся файлы
     showPrologue.call(this);
 }
 
@@ -184,6 +167,10 @@ function hideDialog() {
     }
 }
 
+function getActiveLocationsCount() {
+    return locations.filter(function(l){ return l.unlocked && !l.completed; }).length;
+}
+
 function drawMap() {
     this.children.removeAll(true);
     puzzleActive = false;
@@ -194,6 +181,8 @@ function drawMap() {
     this.add.image(200, 350, mapKey).setDisplaySize(400, 700);
 
     var self = this;
+    var activeCount = getActiveLocationsCount();
+
     locations.forEach(function(loc){
         if (!loc.unlocked) return;
         var icon = self.add.image(loc.x, loc.y, loc.icon);
@@ -205,18 +194,16 @@ function drawMap() {
             icon.setAlpha(0.5);
         } else {
             icon.setAlpha(1.0);
-        }
-
-        // Пульсация активной иконки
-        if (loc.unlocked && !loc.completed && self.getActiveLocationsCount() === 1) {
-            self.tweens.add({
-                targets: icon,
-                scaleX: 1.1,
-                scaleY: 1.1,
-                duration: 600,
-                yoyo: true,
-                repeat: -1
-            });
+            if (activeCount === 1) {
+                self.tweens.add({
+                    targets: icon,
+                    scaleX: 1.1,
+                    scaleY: 1.1,
+                    duration: 600,
+                    yoyo: true,
+                    repeat: -1
+                });
+            }
         }
 
         var txt = loc.name;
@@ -248,7 +235,6 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    // Индикатор прогресса (три точки)
     if (!allCompleted) {
         progressDots = [];
         var dotX = 330;
@@ -286,8 +272,7 @@ function drawMap() {
     livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
     var hintText = allCompleted ? 'Нажми на кнопку «Проснуться»' : (function(){
-        var unlockedCount = locations.filter(function(l){ return l.unlocked && !l.completed; }).length;
-        if (unlockedCount === 1) {
+        if (activeCount === 1) {
             var nextLoc = locations.find(function(l){ return l.unlocked && !l.completed; });
             return nextLoc ? 'Нажми на иконку «' + nextLoc.name + '»' : 'Выбери локацию';
         }
@@ -298,10 +283,6 @@ function drawMap() {
     var hw=htemp.width, hh=htemp.height; htemp.destroy();
     this.add.rectangle(allCompleted ? 240 : 220, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
     mapHintText = this.add.text(allCompleted ? 240 : 220, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
-}
-
-function getActiveLocationsCount() {
-    return locations.filter(function(l){ return l.unlocked && !l.completed; }).length;
 }
 
 function showTutorial() {
@@ -407,7 +388,6 @@ function showEnding() {
     });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
