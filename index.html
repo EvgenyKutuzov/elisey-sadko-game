@@ -128,7 +128,7 @@ function showDialog(msg, portraitKey) {
     }
     if (portraitKey) {
         var scene = game.scene.scenes[0];
-        var portrait = scene.add.image(50, 620, portraitKey);
+        var portrait = scene.add.image(60, 620, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(63, 120);
         } else {
@@ -164,7 +164,6 @@ function drawMap() {
         if (!loc.unlocked) return;
         var icon = self.add.image(loc.x, loc.y, loc.icon);
         icon.setDisplaySize(80, 80);
-        // Большая зона касания (120x120), перекрывает иконку и текст названия
         icon.setInteractive(new Phaser.Geom.Rectangle(-60, -10, 120, 120), Phaser.Geom.Rectangle.Contains);
         if (loc.completed) icon.setAlpha(0.5);
         else icon.setAlpha(1.0);
@@ -204,10 +203,10 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    // Диалоговое окно с большой подложкой и портретом слева
-    dialogBg = this.add.rectangle(200, 620, 340, 150, 0x000000, 0.8).setVisible(false);
-    dialogText = this.add.text(220, 610, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:250}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-    playButton = this.add.text(220, 670, 'ИГРАТЬ', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
+    // Диалоговое окно
+    dialogBg = this.add.rectangle(200, 590, 340, 130, 0x000000, 0.8).setVisible(false);
+    dialogText = this.add.text(220, 580, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:250}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
+    playButton = this.add.text(200, 350, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
     if (allCompleted) {
@@ -259,21 +258,26 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         else if (location.name === 'Причал' && locations[1].completed) duration = 2000;
         else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
+
     scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
         isMoving = false;
         if (!location) return;
         currentLocation = location;
 
-        // Возвращение после За рекой -> диалог с Садко и открытие Великого Новгорода
+        // Возвращение после За рекой -> сначала меняем спрайт, потом диалог
         if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
+            // Меняем спрайт на одиночного Женю (без перерисовки карты)
             updatePlayerSprite({name:'Причал'});
-            showDialog('Спасибо тебе, Женя!\nТеперь я построю храм в Новгороде.\nПойдём со мной!', 'sadko');
-            locations[2].unlocked = true; // открываем Великий Новгород
-            lastPlayerLoc = {x: 120, y: 350};
+            // Ждём 200 мс, чтобы спрайт точно обновился
+            scene.time.delayedCall(200, function(){
+                showDialog('Спасибо тебе, Женя!\nТеперь я построю храм в Новгороде.\nПойдём со мной!', 'sadko');
+            });
+            locations[2].unlocked = true;
+            // Оставляем Женю у причала
+            lastPlayerLoc = {x: 160, y: 510};
             if (location.iconSprite) location.iconSprite.setAlpha(1.0);
             if (location.labelBg) location.labelBg.setAlpha(1.0);
             if (location.labelText) location.labelText.setAlpha(1.0);
-            drawMap.call(scene);
             return;
         }
 
@@ -314,7 +318,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) с АВТОМАТИЧЕСКОЙ hitArea -----
+// ----- ГЕЙМПЛЕЙ (match-3) -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -375,7 +379,6 @@ function startPuzzle(location) {
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
             icon.setDisplaySize(46, 46);
-            // Никакой кастомной геометрии — автоматическая hitArea по размеру 46x46
             icon.setInteractive();
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
@@ -558,7 +561,6 @@ function fillEmptySpaces(isInitial) {
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
                 icon.setDisplaySize(46, 46);
-                // Автоматическая hitArea
                 icon.setInteractive();
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
