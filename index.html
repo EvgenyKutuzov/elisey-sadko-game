@@ -163,15 +163,19 @@ function showDialog(msg, portraitKey, showNextBtn) {
         dialogGroup.add(portrait);
     }
     
-    if (playButton) {
+    // Кнопка ИГРАТЬ (только если НЕ показываем кнопку ДАЛЕЕ)
+    if (playButton && !showNextBtn) {
         playButton.setVisible(true);
         playButton.setPosition(200, 310);
+    } else if (playButton) {
+        playButton.setVisible(false);
     }
     
+    // Кнопка ДАЛЕЕ по центру (на месте кнопки ИГРАТЬ)
     if (showNextBtn) {
-        var nextBtn = scene.add.text(bgCenterX + bgWidth/2 + 30, bgCenterY + bgHeight/2 + 20, 'ДАЛЕЕ', {
-            fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
-            backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
+        var nextBtn = scene.add.text(200, 310, 'ДАЛЕЕ', {
+            fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+            backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
         
         nextBtn.on('pointerdown', function(){
@@ -182,6 +186,11 @@ function showDialog(msg, portraitKey, showNextBtn) {
             locations[0].completed = true;
             locations[1].completed = true;
             updatePlayerSprite({name:'Причал'});
+            // Персонаж остаётся на месте у причала
+            if (playerContainer) {
+                playerContainer.x = 160;
+                playerContainer.y = 510;
+            }
             lastPlayerLoc = {x: 160, y: 510};
             if (mapHintText) mapHintText.setText('Нажми на иконку «Великий Новгород»');
             drawMap.call(scene);
