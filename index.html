@@ -43,6 +43,7 @@ var lastPlayerLoc = null;
 var mapHintText = null;
 var artifactCollected = { bochka: false, gusli: false, krest: false };
 
+// Локации: Причал (первый), За рекой (второй), Причал (возврат), Великий Новгород (финал)
 var locations = [
     { name:'Причал',        x:160, y:510, unlocked:true,  completed:false, targetType:'bochki',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle', isReturn: false },
     { name:'За рекой',      x:350, y:130, unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle', isReturn: false },
@@ -128,7 +129,7 @@ function showDialog(msg, portraitKey) {
     }
     if (portraitKey) {
         var scene = game.scene.scenes[0];
-        var portrait = scene.add.image(50, 610, portraitKey);
+        var portrait = scene.add.image(50, 620, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(63, 120);
         } else {
@@ -158,11 +159,16 @@ function drawMap() {
     this.add.image(200, 350, mapKey).setDisplaySize(400, 700);
 
     var self = this;
+
+    // Определяем количество активных (непройденных) локаций
+    var activeLocs = locations.filter(function(l){ return l.unlocked && !l.completed; });
+
     locations.forEach(function(loc){
         if (!loc.unlocked) return;
         var icon = self.add.image(loc.x, loc.y, loc.icon);
         icon.setDisplaySize(80, 80);
-        icon.setInteractive(new Phaser.Geom.Rectangle(-80, -80, 160, 160), Phaser.Geom.Rectangle.Contains);
+        // Гигантская область касания: 100x100 px, перекрывает и иконку и текст под ней
+        icon.setInteractive(new Phaser.Geom.Rectangle(-50, -5, 100, 100), Phaser.Geom.Rectangle.Contains);
         if (loc.completed) icon.setAlpha(0.5);
         else icon.setAlpha(1.0);
         var txt = loc.name;
@@ -175,6 +181,9 @@ function drawMap() {
             labelText.setAlpha(0.5);
         }
         loc.iconSprite = icon;
+        loc.labelBg = labelBg;
+        loc.labelText = labelText;
+
         icon.on('pointerdown', function(){
             if (isMoving || puzzleActive) return;
             if (lives <= 0 && !loc.completed && !loc.isReturn) { showDialog('Нет жизней!'); return; }
@@ -199,9 +208,10 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    dialogBg = this.add.rectangle(230, 610, 280, 110, 0x000000, 0.75).setVisible(false);
-    dialogText = this.add.text(230, 588, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:260}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-    playButton = this.add.text(230, 642, '🚣 ИГРАТЬ 🚣', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
+    // Диалоговое окно: текст справа, портрет слева
+    dialogBg = this.add.rectangle(230, 625, 280, 120, 0x000000, 0.8).setVisible(false);
+    dialogText = this.add.text(230, 603, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:260}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
+    playButton = this.add.text(230, 657, '🚣 ИГРАТЬ 🚣', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
     if (allCompleted) {
@@ -222,7 +232,6 @@ function drawMap() {
     livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
     var hintText = allCompleted ? 'Нажми на кнопку «Проснуться»' : (function(){
-        var activeLocs = locations.filter(function(l){ return l.unlocked && !l.completed; });
         if (activeLocs.length === 1) {
             return 'Нажми на иконку «' + activeLocs[0].name + '»';
         }
@@ -240,6 +249,14 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
     currentLocation = null;
     tx=Math.round(tx); ty=Math.round(ty);
     lastPlayerLoc = {x: tx, y: ty};
+
+    // Делаем текущую иконку неактивной на время диалога
+    if (location && !location.completed) {
+        location.iconSprite.setAlpha(0.5);
+        if (location.labelBg) location.labelBg.setAlpha(0.5);
+        if (location.labelText) location.labelText.setAlpha(0.5);
+    }
+
     var scene = game.scene.scenes[0];
     var duration = 800;
     if (location) {
@@ -251,6 +268,22 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         isMoving = false;
         if (!location) return;
         currentLocation = location;
+
+        // Основная логика концовок
+        if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
+            // Возвращение после За рекой -> открываем Великий Новгород
+            showDialog('«Причал»\nСпасибо тебе, Женя!\nТеперь построим храм в Новгороде.', 'sadko');
+            locations[2].unlocked = true;
+            updatePlayerSprite({name:'Причал'});
+            lastPlayerLoc = {x: 120, y: 350};
+            // Убираем затемнение с вернувшейся иконки причала
+            if (location.iconSprite) location.iconSprite.setAlpha(1.0);
+            if (location.labelBg) location.labelBg.setAlpha(1.0);
+            if (location.labelText) location.labelText.setAlpha(1.0);
+            drawMap.call(scene);
+            return;
+        }
+
         if (needsPuzzle) {
             var p = TYPES[location.targetType].plural;
             if (location.name === 'Причал' && !locations[0].completed) {
@@ -262,13 +295,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
             } else if (location.name === 'Великий Новгород') {
                 showDialog('«Великий Новгород»\nСобери ' + location.targetCount + ' ' + p + '.\nПостроим храм в честь спасения!', 'sadko');
                 playButton.setVisible(true);
-            }
-        } else {
-            // Возврат к причалу после За рекой (диалог с Садко)
-            if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
-                showDialog('«Причал»\nСпасибо тебе, Женя!\nТеперь построим храм в Новгороде.', 'sadko');
-                locations[2].unlocked = true;
-                lastPlayerLoc = {x: 120, y: 350};
             }
         }
     }});
@@ -334,6 +360,13 @@ function startPuzzle(location) {
     movesText = scene.add.text(200, 100, movesStr, mStyle).setOrigin(0.5);
     mTmp.destroy();
 
+    // Кнопка "?" (обучение)
+    var helpBtn = scene.add.text(40, 10, '?', {
+        fontSize:'20px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+        backgroundColor:'#333333', padding:{x:6,y:4}
+    }).setOrigin(0,0).setInteractive();
+    helpBtn.on('pointerdown', showTutorial);
+
     var musicBtnLevel = scene.add.text(380, 10, musicOn ? '🔊' : '🔇', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
     musicBtnLevel.on('pointerdown', function(){
         musicOn = !musicOn;
@@ -350,7 +383,8 @@ function startPuzzle(location) {
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
             icon.setDisplaySize(46, 46);
-            icon.setInteractive(new Phaser.Geom.Rectangle(-23, -23, 46, 46), Phaser.Geom.Rectangle.Contains);
+            // Хитбокс 60x60 для лёгкого попадания
+            icon.setInteractive(new Phaser.Geom.Rectangle(-30, -30, 60, 60), Phaser.Geom.Rectangle.Contains);
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
             grid[row][col] = icon;
@@ -369,6 +403,26 @@ function startPuzzle(location) {
     // Автоматическая очистка стартовых совпадений
     scene.time.delayedCall(300, function(){
         checkMatches(true);
+    });
+}
+
+function showTutorial() {
+    var scene = game.scene.scenes[0];
+    if (scene.children.list.some(function(child){ return child.name === 'tutorial_overlay'; })) return;
+    var overlay = scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.7);
+    overlay.name = 'tutorial_overlay';
+    var text = scene.add.text(200, 350, 'Перетаскивай фишки, чтобы собрать\n3+ одинаковых в ряд.\nСобери нужное количество,\nчтобы пройти уровень!', {
+        fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+        backgroundColor:'#000000cc', padding:{x:16,y:12}
+    }).setOrigin(0.5);
+    var closeBtn = scene.add.text(200, 450, 'Понятно', {
+        fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+        backgroundColor:'#333333', padding:{x:12,y:6}
+    }).setOrigin(0.5).setInteractive();
+    closeBtn.on('pointerdown', function(){
+        overlay.destroy();
+        text.destroy();
+        closeBtn.destroy();
     });
 }
 
@@ -462,7 +516,6 @@ function checkMatches(isInitial) {
     }
     if (toRemove.length > 0) {
         if (isInitial) {
-            // Бесшумно убираем совпадения без траты ходов
             toRemove.forEach(function(icon){
                 if (!icon) return;
                 icon.destroy();
@@ -514,7 +567,7 @@ function fillEmptySpaces(isInitial) {
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
                 icon.setDisplaySize(46, 46);
-                icon.setInteractive(new Phaser.Geom.Rectangle(-23, -23, 46, 46), Phaser.Geom.Rectangle.Contains);
+                icon.setInteractive(new Phaser.Geom.Rectangle(-30, -30, 60, 60), Phaser.Geom.Rectangle.Contains);
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
             }
@@ -526,7 +579,7 @@ function fillEmptySpaces(isInitial) {
         puzzleActive = false;
         if (currentLocation) {
             currentLocation.completed = true;
-            if (currentLocation.name === 'Причал') artifactCollected.bochka = true;
+            if (currentLocation.name === 'Причал' && !locations[1].completed) artifactCollected.bochka = true;
             else if (currentLocation.name === 'За рекой') artifactCollected.gusli = true;
             else if (currentLocation.name === 'Великий Новгород') artifactCollected.krest = true;
             unlockNext(currentLocation);
@@ -548,12 +601,12 @@ function fillEmptySpaces(isInitial) {
 function unlockNext(loc) {
     if (loc.name === 'Причал' && !locations[1].unlocked) {
         locations[1].unlocked = true;
-    } else if (loc.name === 'За рекой' && !locations[0].isReturn) {
-        // Возвращаемся к причалу
+    } else if (loc.name === 'За рекой') {
+        // После За рекой возврат к Причалу, он снова активен как "непройденный" для возврата
+        locations[0].completed = false;
         locations[0].isReturn = true;
-        locations[0].completed = true;
     } else if (loc.name === 'Великий Новгород') {
-        // Все пройдены
+        // Финальный этап
     }
 }
 
