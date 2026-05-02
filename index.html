@@ -204,9 +204,10 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    dialogBg = this.add.rectangle(230, 625, 280, 120, 0x000000, 0.8).setVisible(false);
-    dialogText = this.add.text(230, 603, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:260}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-    playButton = this.add.text(210, 657, 'ИГРАТЬ', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
+    // Диалоговое окно с большой подложкой и портретом слева
+    dialogBg = this.add.rectangle(200, 620, 340, 150, 0x000000, 0.8).setVisible(false);
+    dialogText = this.add.text(200, 600, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:290}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
+    playButton = this.add.text(200, 660, 'ИГРАТЬ', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
     if (allCompleted) {
@@ -263,11 +264,11 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         if (!location) return;
         currentLocation = location;
 
-        // Возвращение после За рекой -> открываем Великий Новгород
+        // Возвращение после За рекой -> диалог с Садко и открытие Великого Новгорода
         if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
             updatePlayerSprite({name:'Причал'});
             showDialog('Спасибо тебе, Женя!\nТеперь я построю храм в Новгороде.\nПойдём со мной!', 'sadko');
-            locations[2].unlocked = true;
+            locations[2].unlocked = true; // открываем Великий Новгород
             lastPlayerLoc = {x: 120, y: 350};
             if (location.iconSprite) location.iconSprite.setAlpha(1.0);
             if (location.labelBg) location.labelBg.setAlpha(1.0);
@@ -282,7 +283,7 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
                 showDialog('Женя, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 15 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
                 playButton.setVisible(true);
             } else if (location.name === 'За рекой') {
-                showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 12 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!');
+                showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 12 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
                 playButton.setVisible(true);
             } else if (location.name === 'Великий Новгород') {
                 showDialog('Великий Новгород\nСобери ' + location.targetCount + ' ' + p + '.\nПостроим храм в честь спасения!', 'sadko');
@@ -374,8 +375,8 @@ function startPuzzle(location) {
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
             icon.setDisplaySize(46, 46);
-            // hitArea 54x54 без перекрытий
-            icon.setInteractive(new Phaser.Geom.Rectangle(-27, -27, 54, 54), Phaser.Geom.Rectangle.Contains);
+            // hitArea 46x46 без перекрытий
+            icon.setInteractive(new Phaser.Geom.Rectangle(-23, -23, 46, 46), Phaser.Geom.Rectangle.Contains);
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
             grid[row][col] = icon;
@@ -557,7 +558,7 @@ function fillEmptySpaces(isInitial) {
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
                 icon.setDisplaySize(46, 46);
-                icon.setInteractive(new Phaser.Geom.Rectangle(-27, -27, 54, 54), Phaser.Geom.Rectangle.Contains);
+                icon.setInteractive(new Phaser.Geom.Rectangle(-23, -23, 46, 46), Phaser.Geom.Rectangle.Contains);
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
             }
@@ -594,8 +595,6 @@ function unlockNext(loc) {
     } else if (loc.name === 'За рекой') {
         locations[0].completed = false;
         locations[0].isReturn = true;
-    } else if (loc.name === 'Великий Новгород') {
-        // Финал
     }
 }
 
