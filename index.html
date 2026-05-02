@@ -128,7 +128,7 @@ function showDialog(msg, portraitKey) {
     }
     if (portraitKey) {
         var scene = game.scene.scenes[0];
-        var portrait = scene.add.image(60, 620, portraitKey);
+        var portrait = scene.add.image(50, 580, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(63, 120);
         } else {
@@ -184,7 +184,6 @@ function drawMap() {
             if (isMoving || puzzleActive) return;
             if (loc.completed) return;
             if (lives <= 0 && !loc.isReturn) { showDialog('Нет жизней!'); return; }
-            // Для возврата к причалу уровень не нужен
             var needsPuzzle = !loc.completed && !loc.isReturn;
             movePlayerTo(loc.x, loc.y, loc, needsPuzzle);
         });
@@ -205,10 +204,9 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    // Диалоговое окно
-    dialogBg = this.add.rectangle(200, 620, 360, 160, 0x000000, 0.8).setVisible(false);
-    dialogText = this.add.text(220, 610, '', { fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:270}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-    // Кнопка "ИГРАТЬ" по центру
+    // Диалоговое окно (поднято)
+    dialogBg = this.add.rectangle(200, 560, 360, 150, 0x000000, 0.8).setVisible(false);
+    dialogText = this.add.text(220, 550, '', { fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:270}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
     playButton = this.add.text(200, 310, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
@@ -274,13 +272,11 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
             locations[1].completed = true;
             locations[2].unlocked = true;
             lastPlayerLoc = {x: 160, y: 510};
-            var msg = 'Спасибо тебе, Женя!\nТеперь я построю храм в Новгороде.\nПойдём со мной!';
+            // Финальная фраза Садко
+            var msg = 'Женя, спасибо тебе за помощь! Говоришь, седой старец подсказал, что надо делать? Кажется, я знаю, кто это... В благодарность нам надо достроить храм!';
             var portrait = 'sadko';
-            // Показываем диалог прямо здесь и сейчас
             showDialog(msg, portrait);
-            // Перерисовка карты произойдёт при следующем заходе в drawMap (после клика на подсвеченный Новгород)
-            // Но чтобы подсказка обновилась, вызовем drawMap через небольшую задержку
-            scene.time.delayedCall(2500, function(){
+            scene.time.delayedCall(3000, function(){
                 hideDialog();
                 drawMap.call(scene);
             });
@@ -288,6 +284,8 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         }
 
         if (needsPuzzle) {
+            if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
+
             var p = TYPES[location.targetType].plural;
             if (location.name === 'Причал' && !locations[0].completed) {
                 showDialog('Женя, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 15 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
@@ -580,7 +578,7 @@ function fillEmptySpaces(isInitial) {
         if (currentLocation) {
             currentLocation.completed = true;
             if (currentLocation.name === 'Причал' && !locations[1].completed) artifactCollected.bochka = true;
-            else if (currentLocation.name === 'За рекой') artifactCollected.gusli = true;
+            else if (currentLocation.name === 'За рекой') { artifactCollected.gusli = true; locations[1].completed = true; }
             else if (currentLocation.name === 'Великий Новгород') artifactCollected.krest = true;
             unlockNext(currentLocation);
             updatePlayerSprite(currentLocation);
@@ -602,8 +600,9 @@ function unlockNext(loc) {
     if (loc.name === 'Причал' && !locations[1].unlocked) {
         locations[1].unlocked = true;
     } else if (loc.name === 'За рекой') {
-        // Помечаем причал как точку возврата, но не сбрасываем completed
         locations[0].isReturn = true;
+        locations[1].completed = true;
+        locations[0].completed = false;
     }
 }
 
