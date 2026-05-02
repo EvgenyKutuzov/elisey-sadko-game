@@ -16,8 +16,6 @@
 </head>
 <body>
 <script>
-deviceType = (navigator.userAgent.match(/iPad|Android|iPhone|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i)) ? 'mobile' : 'desktop';
-
 var config = {
     type: Phaser.AUTO,
     width: 400,
@@ -43,17 +41,15 @@ var dialogBg, dialogText, playButton;
 var isMoving = false;
 var lastPlayerLoc = null;
 var mapHintText = null;
-var artifactCollected = { bochka: false, gusli: false, krest: false };
 var progressDots = [];
 
-// Звуковые эффекты
+// Пока отключаем загрузку недостающих звуков, чтобы игра запускалась
+// Звуковые эффекты и альтернативные темы появятся позже
 var sfxSwipe = null;
 var sfxMatch = null;
 var sfxWin = null;
 var sfxLose = null;
 var sfxWater = null;
-
-// Темы музыки
 var themeNovgorod = null;
 var themeUnderwater = null;
 var themeVictory = null;
@@ -85,10 +81,7 @@ var dragStartX=0, dragStartY=0;
 var dragPointerStartX=0, dragPointerStartY=0;
 var dragLocked = false;
 
-// Обучение
-var tutorialShown = false;
-
-// Маршруты (сплайны)
+// Маршруты для плавных кривых (сплайнов)
 const ROUTES = {
     'prichal_to_za_rekoy': [
         {x: 250, y: 520}, {x: 280, y: 350}, {x: 320, y: 200}, {x: 350, y: 130}
@@ -122,21 +115,20 @@ function preloadAssets() {
     this.load.image('sadko', 'sadko.png');
     this.load.image('prolog', 'prolog_zasypanie.png');
     this.load.image('epilog', 'epilog_prosypanie.png');
-    this.load.image('epilog_udivlenie', 'epilog_udivlenie.png'); // Файл пока не создан, замена позже
-    this.load.image('artifact_bochka', 'artifact_bochka.png');
-    this.load.image('artifact_gusli', 'artifact_gusli.png');
-    this.load.image('artifact_krest', 'artifact_krest.png');
-    this.load.image('particle_star', 'particle_star.png'); // Звёздочка для частиц (заглушка)
     this.load.audio('bgMusic', 'bg_music.mp3');
-    // Звуки (файлы пока не загружены, код готов)
-    this.load.audio('sfxSwipe', 'sfx_swipe.mp3');
-    this.load.audio('sfxMatch', 'sfx_match.mp3');
-    this.load.audio('sfxWin', 'sfx_win.mp3');
-    this.load.audio('sfxLose', 'sfx_lose.mp3');
-    this.load.audio('sfxWater', 'sfx_water.mp3');
-    this.load.audio('themeNovgorod', 'theme_novgorod.mp3');
-    this.load.audio('themeUnderwater', 'theme_underwater.mp3');
-    this.load.audio('themeVictory', 'theme_victory.mp3');
+    // Ниже — всё, что пока не готово. Раскомментируешь по мере создания файлов.
+    // this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
+    // this.load.image('artifact_bochka', 'artifact_bochka.png');
+    // this.load.image('artifact_gusli', 'artifact_gusli.png');
+    // this.load.image('artifact_krest', 'artifact_krest.png');
+    // this.load.audio('sfxSwipe', 'sfx_swipe.mp3');
+    // this.load.audio('sfxMatch', 'sfx_match.mp3');
+    // this.load.audio('sfxWin', 'sfx_win.mp3');
+    // this.load.audio('sfxLose', 'sfx_lose.mp3');
+    // this.load.audio('sfxWater', 'sfx_water.mp3');
+    // this.load.audio('themeNovgorod', 'theme_novgorod.mp3');
+    // this.load.audio('themeUnderwater', 'theme_underwater.mp3');
+    // this.load.audio('themeVictory', 'theme_victory.mp3');
 }
 
 function createGame() {
@@ -145,15 +137,7 @@ function createGame() {
         bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
         bgMusic.play();
     }
-    // Инициализация звуков (будут доступны, когда появятся файлы)
-    sfxSwipe = this.sound.add('sfxSwipe', { volume: 0.5 });
-    sfxMatch = this.sound.add('sfxMatch', { volume: 0.5 });
-    sfxWin = this.sound.add('sfxWin', { volume: 0.7 });
-    sfxLose = this.sound.add('sfxLose', { volume: 0.7 });
-    sfxWater = this.sound.add('sfxWater', { volume: 0.4 });
-    themeNovgorod = this.sound.add('themeNovgorod', { loop: true, volume: 0.4 });
-    themeUnderwater = this.sound.add('themeUnderwater', { loop: true, volume: 0.5 });
-    themeVictory = this.sound.add('themeVictory', { loop: false, volume: 0.7 });
+    // Звуки будут добавлены, когда появятся файлы
     showPrologue.call(this);
 }
 
@@ -243,13 +227,12 @@ function drawMap() {
         loc.iconSprite = icon;
         icon.on('pointerdown', function(){
             if (isMoving || puzzleActive) return;
-            if (lives <= 0 && !loc.completed) { showDialog('Нет жизней! Подожди восстановления.'); return; }
+            if (lives <= 0 && !loc.completed) { showDialog('Нет жизней!'); return; }
             if (!loc.unlocked) { showDialog('Сначала завершите предыдущую локацию!'); return; }
             movePlayerTo(loc.x, loc.y, loc, !loc.completed);
         });
     });
 
-    // Стартовая позиция Жени
     var startX = lastPlayerLoc ? lastPlayerLoc.x : 50;
     var startY = lastPlayerLoc ? lastPlayerLoc.y : 350;
     playerContainer = this.add.container(startX, startY);
@@ -265,7 +248,7 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    // Индикатор прогресса
+    // Индикатор прогресса (три точки)
     if (!allCompleted) {
         progressDots = [];
         var dotX = 330;
@@ -277,7 +260,6 @@ function drawMap() {
         }
     }
 
-    // Кнопка «Проснуться» или «🎨 Коллекция» в зависимости от завершения
     if (allCompleted) {
         var dreamBtn = this.add.text(200, 670, '🌟 Проснуться 🌟', {
             fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
@@ -286,14 +268,8 @@ function drawMap() {
         dreamBtn.on('pointerdown', function(){
             showEnding();
         });
-    } else {
-        var collectBtn = this.add.text(380, 670, '🎨', {
-            fontSize:'24px'
-        }).setOrigin(0.5).setInteractive();
-        collectBtn.on('pointerdown', showCollection);
     }
 
-    // Кнопка «Как играть?»
     var helpBtn = this.add.text(30, 670, '?', {
         fontSize:'20px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#333333', padding:{x:6,y:4}
@@ -346,13 +322,6 @@ function showTutorial() {
         text.destroy();
         closeBtn.destroy();
     });
-    scene.input.once('pointerdown', function(){
-        if (overlay.active) {
-            overlay.destroy();
-            text.destroy();
-            closeBtn.destroy();
-        }
-    });
 }
 
 function movePlayerTo(tx, ty, location, needsPuzzle) {
@@ -368,7 +337,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
 
-    // Определяем маршрут
     var routeKey = '';
     if (location && location.name === 'За рекой') routeKey = 'prichal_to_za_rekoy';
     else if (location && location.name === 'Причал' && locations[1].completed) routeKey = 'za_rekoy_to_prichal';
@@ -422,53 +390,11 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
     }
 }
 
-function showCollection() {
-    var scene = game.scene.scenes[0];
-    scene.children.removeAll(true);
-    var bg = scene.add.image(200, 350, 'mapBG_start').setDisplaySize(400, 700); // фон
-    scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.7);
-    var title = scene.add.text(200, 80, 'Коллекция артефактов', {
-        fontSize:'22px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold'
-    }).setOrigin(0.5);
-
-    var items = [
-        { key: 'artifact_bochka', label: 'Корабельный бочонок', collected: artifactCollected.bochka },
-        { key: 'artifact_gusli', label: 'Обломок гуслей', collected: artifactCollected.gusli },
-        { key: 'artifact_krest', label: 'Золотой крестик', collected: artifactCollected.krest }
-    ];
-
-    items.forEach(function(item, i) {
-        var y = 200 + i * 140;
-        var icon = scene.add.image(120, y, item.key).setDisplaySize(80, 80);
-        if (!item.collected) icon.setTint(0x000000);
-        scene.add.text(200, y, item.label, {
-            fontSize:'16px', fill: item.collected ? '#ffffff' : '#888888',
-            fontFamily:'Comfortaa, Arial', fontStyle:'bold'
-        }).setOrigin(0, 0.5);
-    });
-
-    var backBtn = scene.add.text(200, 650, 'Назад', {
-        fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
-        backgroundColor:'#333333', padding:{x:12,y:6}
-    }).setOrigin(0.5).setInteractive();
-    backBtn.on('pointerdown', function(){
-        drawMap.call(scene);
-    });
-}
-
 function showEnding() {
-    var allArtifacts = artifactCollected.bochka && artifactCollected.gusli && artifactCollected.krest;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
-    var bgKey = allArtifacts ? 'epilog' : 'epilog_udivlenie';
-    var bg = scene.add.image(200, 350, bgKey).setDisplaySize(400, 700);
-    if (!allArtifacts) {
-        scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
-    }
-    var textContent = allArtifacts ?
-        'Женя открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…' :
-        'Женя вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?';
-    var text = scene.add.text(200, 580, textContent, {
+    var bg = scene.add.image(200, 350, 'epilog').setDisplaySize(400, 700);
+    var text = scene.add.text(200, 580, 'Женя открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…', {
         fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#000000cc', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
     }).setOrigin(0.5);
@@ -481,7 +407,7 @@ function showEnding() {
     });
 }
 
-// ----- ГЕЙМПЛЕЙ (без изменений) -----
+// ----- ГЕЙМПЛЕЙ (match-3) -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -596,7 +522,6 @@ function onDragEnd(pointer) {
                 document.body.style.overflow = 'auto';
                 dragLocked = true;
                 scene.time.delayedCall(200, function(){ dragLocked = false; });
-                if (sfxSwipe) sfxSwipe.play();
                 return;
             }
         }
@@ -657,17 +582,6 @@ function removeMatches(matches) {
         scene.tweens.add({ targets: icon, scaleX:0, scaleY:0, alpha:0, duration:200, onComplete: function(){ icon.destroy(); } });
         grid[icon.row][icon.col] = null;
     });
-    if (sfxMatch) sfxMatch.play();
-    // Частицы при сборе
-    var emitter = scene.add.particles(200, 350, 'particle_star', {
-        speed: { min: -100, max: 100 },
-        angle: { min: 0, max: 360 },
-        scale: { start: 1, end: 0 },
-        lifespan: 600,
-        quantity: 5,
-        emitting: false
-    });
-    emitter.explode();
     scene.time.delayedCall(300, fillEmptySpaces);
 }
 
@@ -703,13 +617,8 @@ function fillEmptySpaces() {
         puzzleActive = false;
         if (currentLocation) {
             currentLocation.completed = true;
-            // Выдаём артефакт
-            if (currentLocation.name === 'Причал') artifactCollected.bochka = true;
-            if (currentLocation.name === 'За рекой') artifactCollected.gusli = true;
-            if (currentLocation.name === 'Великий Новгород') artifactCollected.krest = true;
             unlockNext(currentLocation);
             updatePlayerSprite(currentLocation);
-            if (sfxWin) sfxWin.play();
             var factText = scene.add.text(200, 380, '✅ Миссия выполнена!', {
                 fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:340},
                 backgroundColor:'#000000cc', padding:{x:12,y:12},
@@ -764,10 +673,9 @@ function loseLevel() {
     if (lives < 0) lives = 0;
     if (livesText) livesText.setText('❤️ x '+lives);
     if (lives <= 0) {
-        showEnding(); // Плохая концовка, если жизни кончились
+        showEnding();
         return;
     }
-    if (sfxLose) sfxLose.play();
     var scene = game.scene.scenes[0];
     if (playerContainer) {
         playerContainer.x = 40;
