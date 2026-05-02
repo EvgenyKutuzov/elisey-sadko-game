@@ -118,6 +118,10 @@ function createGame() {
         bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
         bgMusic.play();
     }
+    // Принудительный запрос полноэкранного режима для мобильных (убирает блокировки касаний)
+    if (this.scale && this.scale.orientation) {
+        this.scale.requestFullscreen();
+    }
     showPrologue.call(this);
 }
 
@@ -184,11 +188,10 @@ function drawMap() {
         if (!loc.unlocked) return;
         var icon = self.add.image(loc.x, loc.y, loc.icon);
         icon.setOrigin(0.5, 0.5);
-        // Исправленная интерактивная зона: круг с центром (0,0) радиусом 40
-        icon.setInteractive(
-            new Phaser.Geom.Circle(0, 0, 40),
-            Phaser.Geom.Circle.Contains
-        );
+        // Явно задаём размер и делаем интерактивной стандартную прямоугольную область
+        icon.setDisplaySize(80, 80);
+        icon.setSize(80, 80);
+        icon.setInteractive();
         if (loc.completed) {
             icon.setAlpha(0.5);
         } else {
@@ -210,8 +213,8 @@ function drawMap() {
         var tw=temp.width, th=temp.height; temp.destroy();
         self.add.rectangle(loc.x, loc.y+48, tw+12, th+8, 0x000000, 0.6).setOrigin(0.5);
         self.add.text(loc.x, loc.y+48, txt, { fontSize:'15px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', stroke:'#000000', strokeThickness:4 }).setOrigin(0.5);
-        
-        // Обработчик касания только через кастомную hitArea
+
+        // Обработчик касания — теперь сработает точно
         icon.on('pointerdown', function(){
             if (isMoving || puzzleActive) return;
             if (lives <= 0 && !loc.completed) { showDialog('Нет жизней!'); return; }
@@ -311,7 +314,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
 
-    // Маршруты (сплайны) — используем напрямую, без сложных проверок
     var routeKey = '';
     if (location && location.name === 'За рекой') routeKey = 'prichal_to_za_rekoy';
     else if (location && location.name === 'Причал' && locations[1].completed) routeKey = 'za_rekoy_to_prichal';
@@ -319,7 +321,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
 
     if (routeKey && ROUTES[routeKey]) {
         var points = ROUTES[routeKey];
-        // Убедимся, что Spline получает корректные точки
         var spline = new Phaser.Curves.Spline(points);
         var follower = { t: 0 };
         scene.tweens.add({
@@ -348,7 +349,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
             }
         });
     } else {
-        // Запасной вариант: прямое перемещение, если маршрут не задан
         scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
             isMoving = false;
             if (location && needsPuzzle) {
