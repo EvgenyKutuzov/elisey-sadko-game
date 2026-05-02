@@ -128,7 +128,7 @@ function showDialog(msg, portraitKey, needNextBtn) {
     }
     if (portraitKey) {
         var scene = game.scene.scenes[0];
-        var portrait = scene.add.image(50, 580, portraitKey);
+        var portrait = scene.add.image(60, 580, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(63, 120);
         } else {
@@ -136,7 +136,6 @@ function showDialog(msg, portraitKey, needNextBtn) {
         }
         dialogBg.portrait = portrait;
     }
-    // Кнопка "Далее" для ключевых диалогов
     if (needNextBtn && dialogNextBtn) {
         dialogNextBtn.setVisible(true);
     } else if (dialogNextBtn) {
@@ -213,15 +212,19 @@ function drawMap() {
 
     // Диалоговое окно
     dialogBg = this.add.rectangle(200, 560, 360, 150, 0x000000, 0.8).setVisible(false);
-    dialogText = this.add.text(220, 550, '', { fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:270}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-    // Кнопка ИГРАТЬ
+    dialogText = this.add.text(230, 550, '', { fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:260}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
     playButton = this.add.text(200, 310, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
-    // Кнопка ДАЛЕЕ
     dialogNextBtn = this.add.text(280, 620, 'ДАЛЕЕ', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     dialogNextBtn.on('pointerdown', function(){
         hideDialog();
-        locations[2].unlocked = true; // Открываем Великий Новгород
+        locations[2].unlocked = true;
+        // Явно фиксируем, что Причал и За рекой завершены
+        locations[0].completed = true;
+        locations[1].completed = true;
+        // Обновляем спрайт и позицию
+        updatePlayerSprite({name:'Причал'});
+        lastPlayerLoc = {x: 160, y: 510};
         if (mapHintText) mapHintText.setText('Нажми на иконку «Великий Новгород»');
     });
 
@@ -280,14 +283,9 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         if (!location) return;
         currentLocation = location;
 
-        // Возвращение после За рекой -> диалог с Садко и открытие Великого Новгорода
         if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
-            // Меняем спрайт на одиночного Женю
             updatePlayerSprite({name:'Причал'});
-            locations[0].completed = true;
-            locations[1].completed = true;
             lastPlayerLoc = {x: 160, y: 510};
-            // Диалог с кнопкой ДАЛЕЕ
             showDialog('Женя, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
             if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
             return;
@@ -295,7 +293,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
 
         if (needsPuzzle) {
             if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
-
             var p = TYPES[location.targetType].plural;
             if (location.name === 'Причал' && !locations[0].completed) {
                 showDialog('Женя, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 15 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
