@@ -37,7 +37,8 @@ var musicOn = true;
 var musicBtn = null;
 
 var playerContainer;
-var dialogBg, dialogText, playButton, dialogNextBtn;
+var dialogGroup = null;
+var playButton;
 var isMoving = false;
 var lastPlayerLoc = null;
 var mapHintText = null;
@@ -46,7 +47,7 @@ var artifactCollected = { bochka: false, gusli: false, krest: false };
 var locations = [
     { name:'Причал',        x:160, y:510, unlocked:true,  completed:false, targetType:'bochki',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle', isReturn: false },
     { name:'За рекой',      x:350, y:130, unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle', isReturn: false },
-    { name:'Великий Новгород', x:120, y:140, unlocked:false, completed:false, targetType:'kamen', targetCount:20, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle', isReturn: false }
+    { name:'Великий Новгород', x:120, y:110, unlocked:false, completed:false, targetType:'kamen', targetCount:20, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle', isReturn: false }
 ];
 var currentLocation = null;
 var livesText, lives=5, maxLives=5;
@@ -117,41 +118,85 @@ function showPrologue() {
     });
 }
 
-function showDialog(msg, portraitKey, needNextBtn) {
-    if (!dialogText || !dialogBg) return;
-    dialogText.setText(msg);
-    dialogBg.setVisible(true);
-    dialogText.setVisible(true);
-    if (dialogBg.portrait) {
-        dialogBg.portrait.destroy();
-        dialogBg.portrait = null;
+function showDialog(msg, portraitKey, showNextBtn) {
+    var scene = game.scene.scenes[0];
+    if (dialogGroup) {
+        dialogGroup.destroy();
+        dialogGroup = null;
     }
+    
+    var textStyle = { fontSize:'15px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', align:'left', wordWrap:{width:200}, stroke:'#000000', strokeThickness:2 };
+    var tmpText = scene.add.text(0, 0, msg, textStyle);
+    var textWidth = tmpText.width;
+    var textHeight = tmpText.height;
+    tmpText.destroy();
+    
+    var paddingX = 20;
+    var paddingY = 16;
+    var bgWidth = textWidth + paddingX * 2;
+    var bgHeight = textHeight + paddingY * 2;
+    
+    var bgCenterY = 590;
+    var bgLeftX = 60;
+    var bgCenterX = bgLeftX + bgWidth / 2;
+    
     if (portraitKey) {
-        var scene = game.scene.scenes[0];
-        var portrait = scene.add.image(60, 520, portraitKey);
+        bgLeftX = 110;
+        bgCenterX = bgLeftX + bgWidth / 2;
+    }
+    
+    dialogGroup = scene.add.group();
+    
+    var bg = scene.add.rectangle(bgCenterX, bgCenterY, bgWidth, bgHeight, 0x000000, 0.8);
+    dialogGroup.add(bg);
+    
+    var dialogText = scene.add.text(bgLeftX + paddingX, bgCenterY - bgHeight/2 + paddingY, msg, textStyle);
+    dialogGroup.add(dialogText);
+    
+    if (portraitKey) {
+        var portrait = scene.add.image(35, bgCenterY, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(63, 120);
         } else {
-            portrait.setDisplaySize(100, 100);
+            portrait.setDisplaySize(80, 80);
         }
-        dialogBg.portrait = portrait;
+        dialogGroup.add(portrait);
     }
-    if (needNextBtn && dialogNextBtn) {
-        dialogNextBtn.setVisible(true);
-    } else if (dialogNextBtn) {
-        dialogNextBtn.setVisible(false);
+    
+    if (playButton) {
+        playButton.setVisible(true);
+        playButton.setPosition(200, 310);
+    }
+    
+    if (showNextBtn) {
+        var nextBtn = scene.add.text(bgCenterX + bgWidth/2 + 30, bgCenterY + bgHeight/2 + 20, 'ДАЛЕЕ', {
+            fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+            backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
+        }).setOrigin(0.5).setInteractive();
+        
+        nextBtn.on('pointerdown', function(){
+            dialogGroup.destroy();
+            dialogGroup = null;
+            if (playButton) playButton.setVisible(false);
+            locations[2].unlocked = true;
+            locations[0].completed = true;
+            locations[1].completed = true;
+            updatePlayerSprite({name:'Причал'});
+            lastPlayerLoc = {x: 160, y: 510};
+            if (mapHintText) mapHintText.setText('Нажми на иконку «Великий Новгород»');
+            drawMap.call(scene);
+        });
+        
+        dialogGroup.add(nextBtn);
     }
 }
 
 function hideDialog() {
-    if (dialogBg) dialogBg.setVisible(false);
-    if (dialogText) dialogText.setVisible(false);
-    if (playButton) playButton.setVisible(false);
-    if (dialogNextBtn) dialogNextBtn.setVisible(false);
-    if (dialogBg && dialogBg.portrait) {
-        dialogBg.portrait.destroy();
-        dialogBg.portrait = null;
+    if (dialogGroup) {
+        dialogGroup.destroy();
+        dialogGroup = null;
     }
+    if (playButton) playButton.setVisible(false);
 }
 
 function drawMap() {
@@ -195,11 +240,17 @@ function drawMap() {
         });
     });
 
+    // После завершения всех уровней перемещаем Женю в исходную позицию
+    if (allCompleted) {
+        lastPlayerLoc = {x: 50, y: 350};
+    }
+
     var startX = lastPlayerLoc ? lastPlayerLoc.x : 50;
     var startY = lastPlayerLoc ? lastPlayerLoc.y : 350;
     playerContainer = this.add.container(startX, startY);
     var spriteKey = 'zhenya';
-    if (locations[1].completed && !locations[2].completed) spriteKey = 'zhenya_sadko_boat';
+    // После возвращения к причалу (Причал завершён) не показываем лодку
+    if (locations[1].completed && !locations[2].completed && !locations[0].completed) spriteKey = 'zhenya_sadko_boat';
     else if (locations[0].completed && !locations[1].completed) spriteKey = 'zhenya_boat';
     var currentSprite = this.add.image(0,0,spriteKey);
     if (spriteKey === 'zhenya_sadko_boat') {
@@ -210,24 +261,9 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    // Диалоговое окно
-    dialogBg = this.add.rectangle(200, 560, 360, 150, 0x000000, 0.8).setVisible(false);
-    dialogText = this.add.text(230, 550, '', { fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:260}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
+    dialogGroup = null;
     playButton = this.add.text(200, 310, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
-    // Кнопка "ДАЛЕЕ" под подложкой
-    dialogNextBtn = this.add.text(280, 640, 'ДАЛЕЕ', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
-    dialogNextBtn.on('pointerdown', function(){
-        hideDialog();
-        locations[2].unlocked = true;
-        locations[0].completed = true;
-        locations[1].completed = true;
-        updatePlayerSprite({name:'Причал'});
-        lastPlayerLoc = {x: 160, y: 510};
-        if (mapHintText) mapHintText.setText('Нажми на иконку «Великий Новгород»');
-        // ВОТ ЭТО ГЛАВНОЕ: перерисовываем карту, чтобы иконка появилась
-        drawMap.call(game.scene.scenes[0]);
-    });
 
     if (allCompleted) {
         var dreamBtn = this.add.text(200, 670, '🌟 Проснуться 🌟', {
@@ -297,13 +333,10 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
             var p = TYPES[location.targetType].plural;
             if (location.name === 'Причал' && !locations[0].completed) {
                 showDialog('Женя, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 15 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
-                playButton.setVisible(true);
             } else if (location.name === 'За рекой') {
                 showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 12 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
-                playButton.setVisible(true);
             } else if (location.name === 'Великий Новгород') {
                 showDialog('Помоги построить храм!\nСобери 20 камней.', 'sadko');
-                playButton.setVisible(true);
             }
         }
     }});
