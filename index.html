@@ -206,8 +206,8 @@ function drawMap() {
 
     // Диалоговое окно с большой подложкой и портретом слева
     dialogBg = this.add.rectangle(200, 620, 340, 150, 0x000000, 0.8).setVisible(false);
-    dialogText = this.add.text(200, 600, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:290}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
-    playButton = this.add.text(200, 660, 'ИГРАТЬ', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
+    dialogText = this.add.text(220, 610, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:250}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
+    playButton = this.add.text(220, 670, 'ИГРАТЬ', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
     if (allCompleted) {
@@ -314,7 +314,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) -----
+// ----- ГЕЙМПЛЕЙ (match-3) с АВТОМАТИЧЕСКОЙ hitArea -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -375,8 +375,8 @@ function startPuzzle(location) {
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
             icon.setDisplaySize(46, 46);
-            // hitArea 46x46 без перекрытий
-            icon.setInteractive(new Phaser.Geom.Rectangle(-23, -23, 46, 46), Phaser.Geom.Rectangle.Contains);
+            // Никакой кастомной геометрии — автоматическая hitArea по размеру 46x46
+            icon.setInteractive();
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
             grid[row][col] = icon;
@@ -558,7 +558,8 @@ function fillEmptySpaces(isInitial) {
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
                 icon.setDisplaySize(46, 46);
-                icon.setInteractive(new Phaser.Geom.Rectangle(-23, -23, 46, 46), Phaser.Geom.Rectangle.Contains);
+                // Автоматическая hitArea
+                icon.setInteractive();
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
             }
