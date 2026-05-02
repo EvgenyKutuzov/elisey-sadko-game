@@ -41,7 +41,6 @@ var dialogBg, dialogText, playButton;
 var isMoving = false;
 var lastPlayerLoc = null;
 var mapHintText = null;
-var progressDots = [];
 var artifactCollected = { bochka: false, gusli: false, krest: false };
 
 var locations = [
@@ -139,10 +138,10 @@ function showDialog(msg, portraitKey) {
 }
 
 function hideDialog() {
-    dialogBg.setVisible(false);
-    dialogText.setVisible(false);
-    playButton.setVisible(false);
-    if (dialogBg.portrait) {
+    if (dialogBg) dialogBg.setVisible(false);
+    if (dialogText) dialogText.setVisible(false);
+    if (playButton) playButton.setVisible(false);
+    if (dialogBg && dialogBg.portrait) {
         dialogBg.portrait.destroy();
         dialogBg.portrait = null;
     }
@@ -161,8 +160,10 @@ function drawMap() {
     locations.forEach(function(loc){
         if (!loc.unlocked) return;
         var icon = self.add.image(loc.x, loc.y, loc.icon);
-        icon.setInteractive();
+        icon.setDisplaySize(80, 80);
+        icon.setInteractive(new Phaser.Geom.Rectangle(-40, -40, 80, 80), Phaser.Geom.Rectangle.Contains);
         if (loc.completed) icon.setAlpha(0.5);
+        else icon.setAlpha(1.0);
         var txt = loc.name;
         var temp = self.add.text(0,0,txt,{ fontSize:'15px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', stroke:'#000000', strokeThickness:4 });
         var tw=temp.width, th=temp.height; temp.destroy();
@@ -191,6 +192,12 @@ function drawMap() {
     }
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
+
+    // Создаём элементы диалога ДО того, как они потребуются
+    dialogBg = this.add.rectangle(200, 620, 360, 110, 0x000000, 0.75).setVisible(false);
+    dialogText = this.add.text(200, 598, '', { fontSize:'14px', fill:'#ffffff', align:'center', wordWrap:{width:320}, fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5).setVisible(false);
+    playButton = this.add.text(200, 652, '🚣 ИГРАТЬ 🚣', { fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
+    playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
     if (allCompleted) {
         var dreamBtn = this.add.text(200, 670, '🌟 Проснуться 🌟', {
