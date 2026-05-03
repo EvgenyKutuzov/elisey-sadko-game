@@ -226,7 +226,8 @@ function drawMap() {
             if (!loc.unlocked) return;
             var icon = self.add.image(loc.x, loc.y, loc.icon);
             icon.setDisplaySize(80, 80);
-            icon.setInteractive(new Phaser.Geom.Rectangle(-60, -10, 120, 120), Phaser.Geom.Rectangle.Contains);
+            // Убираем кастомный хитбокс, используем стандартный
+            icon.setInteractive();
             if (loc.completed) icon.setAlpha(0.5);
             else icon.setAlpha(1.0);
             var txt = loc.name;
