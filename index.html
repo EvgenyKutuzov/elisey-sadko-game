@@ -45,9 +45,9 @@ var mapHintText = null;
 var artifactCollected = { bochka: false, gusli: false, kamen: false, pero: false, pisalo: false };
 
 var locations = [
-    { name:'Причал',        x:160, y:510, unlocked:true,  completed:false, targetType:'bochki',  targetCount:15, icon:'prichal_icon',    puzzleBg:'prichal_puzzle', isReturn: false },
-    { name:'За рекой',      x:350, y:130, unlocked:false, completed:false, targetType:'gusli',   targetCount:12, icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle', isReturn: false },
-    { name:'Великий Новгород', x:120, y:110, unlocked:false, completed:false, targetType:'kamen', targetCount:20, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle', isReturn: false }
+    { name:'Причал',        x:160, y:510, unlocked:true,  completed:false, targetType:'bochki',  targetCount:10, icon:'prichal_icon',    puzzleBg:'prichal_puzzle', isReturn: false },
+    { name:'За рекой',      x:350, y:130, unlocked:false, completed:false, targetType:'gusli',   targetCount:8,  icon:'za_rekoy_icon',   puzzleBg:'za_rekoy_puzzle', isReturn: false },
+    { name:'Великий Новгород', x:120, y:110, unlocked:false, completed:false, targetType:'kamen', targetCount:15, icon:'novgorod_icon',  puzzleBg:'novgorod_puzzle', isReturn: false }
 ];
 var currentLocation = null;
 var livesText, lives=5, maxLives=5;
@@ -64,7 +64,7 @@ var TYPES = {
 var TYPE_KEYS = Object.keys(TYPES);
 var grid = [];
 var targetType=null, targetCount=0, collectedCount=0, scoreText;
-var movesLeft=20, movesText;
+var movesLeft=25, movesText;
 
 var dragIcon = null;
 var dragStartX=0, dragStartY=0;
@@ -157,9 +157,12 @@ function showDialog(msg, portraitKey, showNextBtn) {
     dialogGroup.add(dialogText);
     
     if (portraitKey) {
-        // Садко и Старец теперь 120×120
-        var portrait = scene.add.image(35, bgCenterY, portraitKey);
-        portrait.setDisplaySize(120, 120);
+        var portrait = scene.add.image(45, bgCenterY, portraitKey);
+        if (portraitKey === 'sadko') {
+            portrait.setDisplaySize(63, 120);
+        } else {
+            portrait.setDisplaySize(120, 120);
+        }
         dialogGroup.add(portrait);
     }
     
@@ -223,7 +226,6 @@ function drawMap() {
             if (!loc.unlocked) return;
             var icon = self.add.image(loc.x, loc.y, loc.icon);
             icon.setDisplaySize(80, 80);
-            // Убираем кастомный хитбокс, используем стандартный
             icon.setInteractive();
             if (loc.completed) icon.setAlpha(0.5);
             else icon.setAlpha(1.0);
@@ -298,7 +300,6 @@ function drawMap() {
     })();
     var htemp = this.add.text(0,0,hintText,{ fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
     var hw=htemp.width, hh=htemp.height; htemp.destroy();
-    // Подсказка сдвинута вправо на финальном экране
     var hintX = allCompleted ? 260 : 220;
     this.add.rectangle(hintX, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
     mapHintText = this.add.text(hintX, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
@@ -342,11 +343,11 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
             if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
             var p = TYPES[location.targetType].plural;
             if (location.name === 'Причал' && !locations[0].completed) {
-                showDialog('Женя, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 15 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
+                showDialog('Женя, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
             } else if (location.name === 'За рекой') {
-                showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 12 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
+                showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 8 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
             } else if (location.name === 'Великий Новгород') {
-                showDialog('Помоги построить храм!\nСобери 20 камней.', 'sadko');
+                showDialog('Помоги построить храм!\nСобери 15 камней.', 'sadko');
             }
         }
     }});
@@ -373,13 +374,13 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + баланс -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
     collectedCount = 0; grid = []; targetType = location.targetType; targetCount = location.targetCount;
-    movesLeft = 20;
+    movesLeft = 25;
     var typePlural = TYPES[targetType].plural;
 
     scene.add.image(200, 350, location.puzzleBg).setDisplaySize(400, 700);
