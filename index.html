@@ -71,6 +71,9 @@ var dragStartX=0, dragStartY=0;
 var dragPointerStartX=0, dragPointerStartY=0;
 var dragLocked = false;
 
+// Флаг для подсветки целевых фишек
+var firstMoveMade = false;
+
 function preloadAssets() {
     this.load.image('mapBG_start', 'novgorod_map_start.png');
     this.load.image('mapBG_final', 'novgorod_map_final.png');
@@ -144,7 +147,8 @@ function showDialog(msg, portraitKey, showNextBtn) {
     var bgCenterX = bgLeftX + bgWidth / 2;
     
     if (portraitKey) {
-        bgLeftX = 110;
+        // Сдвигаем текст правее, чтобы портрет не перекрывал его
+        bgLeftX = 130;
         bgCenterX = bgLeftX + bgWidth / 2;
     }
     
@@ -157,13 +161,11 @@ function showDialog(msg, portraitKey, showNextBtn) {
     dialogGroup.add(dialogText);
     
     if (portraitKey) {
-        var portrait = scene.add.image(60, bgCenterY, portraitKey);
-        // Увеличиваем в 1.5 раза относительно Жени (120 → 180)
+        // Портрет также сдвигаем правее
+        var portrait = scene.add.image(80, bgCenterY, portraitKey);
         if (portraitKey === 'sadko') {
-            // Родные пропорции: 126×240 → 95×180 (1.5 от 63×120)
             portrait.setDisplaySize(95, 180);
         } else {
-            // Старец: 240×240 → 180×180
             portrait.setDisplaySize(180, 180);
         }
         dialogGroup.add(portrait);
@@ -376,13 +378,14 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + подсветка целей -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
     collectedCount = 0; grid = []; targetType = location.targetType; targetCount = location.targetCount;
     movesLeft = 25;
+    firstMoveMade = false; // сброс флага подсветки
     var typePlural = TYPES[targetType].plural;
 
     scene.add.image(200, 350, location.puzzleBg).setDisplaySize(400, 700);
@@ -445,6 +448,9 @@ function startPuzzle(location) {
         }
     }
 
+    // Подсвечиваем целевые фишки при старте
+    highlightTargets();
+
     var backBtn = scene.add.text(200, 660, 'Вернуться на карту', {
         fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#333333', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
@@ -454,9 +460,30 @@ function startPuzzle(location) {
         drawMap.call(scene);
     });
 
+    // Автоудаление стартовых совпадений (без анимации!)
     scene.time.delayedCall(300, function(){
         checkMatches(true);
     });
+}
+
+function highlightTargets() {
+    for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+            var icon = grid[r][c];
+            if (icon && icon.artifactType === targetType) {
+                icon.setTint(0xffd700); // золотая подсветка
+            }
+        }
+    }
+}
+
+function clearHighlights() {
+    for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+            var icon = grid[r][c];
+            if (icon) icon.clearTint();
+        }
+    }
 }
 
 function showTutorial() {
@@ -522,6 +549,13 @@ function onDragEnd(pointer) {
                 dragIcon = null;
                 document.body.style.overflow = 'auto';
                 dragLocked = true;
+
+                // Первый ход сделан — убираем подсветку
+                if (!firstMoveMade) {
+                    firstMoveMade = true;
+                    clearHighlights();
+                }
+
                 scene.time.delayedCall(200, function(){ dragLocked = false; });
                 return;
             }
@@ -607,6 +641,7 @@ function fillEmptySpaces(isInitial) {
                 if (r !== emptyRow) {
                     grid[emptyRow][c] = grid[r][c]; grid[r][c] = null;
                     grid[emptyRow][c].row = emptyRow; grid[emptyRow][c].col = c;
+                    // Убираем анимацию при стартовом заполнении
                     scene.tweens.add({ targets: grid[emptyRow][c], y: sy + emptyRow * CELL_SIZE + CELL_SIZE/2, duration: isInitial ? 0 : 200 });
                 }
                 emptyRow--;
@@ -628,6 +663,7 @@ function fillEmptySpaces(isInitial) {
         }
     }
     if (isInitial) {
+        // После мгновенной сборки проверяем ещё раз и, если всё ещё есть тройки, убираем без анимации
         scene.time.delayedCall(100, function(){ checkMatches(true); });
     } else if (collectedCount >= targetCount) {
         puzzleActive = false;
