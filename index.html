@@ -75,12 +75,18 @@ var firstMoveMade = false;
 var highlightFrames = [];
 var finalDialogShown = false;
 
-// 🔊 Звуковые эффекты
-var sfxSwipe = null;
-var sfxMatch = null;
-var sfxWin = null;
-var sfxLose = null;
-var sfxWater = null;
+// Маршруты (сплайны), чтобы персонаж ходил только по берегу
+const ROUTES = {
+    'prichal_to_za_rekoy': [
+        {x: 200, y: 520}, {x: 260, y: 350}, {x: 320, y: 200}, {x: 350, y: 130}
+    ],
+    'za_rekoy_to_prichal': [
+        {x: 320, y: 200}, {x: 260, y: 350}, {x: 200, y: 520}, {x: 160, y: 510}
+    ],
+    'prichal_to_novgorod': [
+        {x: 140, y: 490}, {x: 100, y: 320}, {x: 120, y: 180}
+    ]
+};
 
 function preloadAssets() {
     this.load.image('mapBG_start', 'novgorod_map_start.png');
@@ -106,11 +112,6 @@ function preloadAssets() {
     this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
     this.load.image('particle_star', 'particle_star.png');
     this.load.audio('bgMusic', 'bg_music.mp3');
-    this.load.audio('sfxSwipe', 'sfx_swipe.mp3');
-    this.load.audio('sfxMatch', 'sfx_match.mp3');
-    this.load.audio('sfxWin', 'sfx_win.mp3');
-    this.load.audio('sfxLose', 'sfx_lose.mp3');
-    this.load.audio('sfxWater', 'sfx_water.mp3');
 }
 
 function createGame() {
@@ -119,12 +120,6 @@ function createGame() {
         bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
         bgMusic.play();
     }
-    sfxSwipe = this.sound.add('sfxSwipe', { volume: 0.4 });
-    sfxMatch = this.sound.add('sfxMatch', { volume: 0.4 });
-    sfxWin   = this.sound.add('sfxWin',   { volume: 0.5 });
-    sfxLose  = this.sound.add('sfxLose',  { volume: 0.5 });
-    sfxWater = this.sound.add('sfxWater', { volume: 0.4 });
-
     showPrologue.call(this);
 }
 
@@ -179,7 +174,6 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
     dialogGroup.add(dialogText);
     
     if (portraitKey) {
-        // Портрет Старца сдвинут правее, Садко остаётся на прежнем месте
         var portraitX = (portraitKey === 'sadko') ? 80 : 70;
         var portrait = scene.add.image(portraitX, bgCenterY, portraitKey);
         if (portraitKey === 'sadko') {
@@ -265,12 +259,12 @@ function drawMap() {
             loc.labelBg = labelBg;
             loc.labelText = labelText;
 
-            // ✨ Лёгкая пульсация только для единственной активной локации
+            // ✨ Лёгкое, ненавязчивое мигание
             if (activeLocs.length === 1 && loc.unlocked && !loc.completed) {
                 self.tweens.add({
                     targets: icon,
-                    scaleX: 1.03,
-                    scaleY: 1.03,
+                    scaleX: 1.02,
+                    scaleY: 1.02,
                     duration: 800,
                     yoyo: true,
                     repeat: -1
@@ -364,48 +358,85 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
 
     var scene = game.scene.scenes[0];
     var duration = 800;
-    // 🔊 Звук воды только для реальных водных маршрутов (Причал ↔ За рекой), исключая пеший путь к Новгороду
-    var isWaterRoute = false;
     if (location) {
-        if (location.name === 'За рекой') {
-            duration = 2000;
-            isWaterRoute = true;
-        } else if (location.name === 'Причал' && locations[1].completed) {
-            duration = 2000;
-            isWaterRoute = true;
-        } else if (location.name === 'Великий Новгород' && locations[1].completed) {
-            duration = 2000; // пешком, но длительность оставим для плавности, вода не играет
-        }
-    }
-    if (isWaterRoute && sfxWater && !sfxWater.isPlaying) {
-        sfxWater.play();
+        if (location.name === 'За рекой') duration = 2000;
+        else if (location.name === 'Причал' && locations[1].completed) duration = 2000;
+        else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
 
-    scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
-        isMoving = false;
-        if (!location) return;
-        currentLocation = location;
+    // Определяем маршрут для обхода воды
+    var routeKey = '';
+    if (location && location.name === 'За рекой') routeKey = 'prichal_to_za_rekoy';
+    else if (location && location.name === 'Причал' && locations[1].completed) routeKey = 'za_rekoy_to_prichal';
+    else if (location && location.name === 'Великий Новгород') routeKey = 'prichal_to_novgorod';
 
-        if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
-            updatePlayerSprite({name:'Причал'});
-            lastPlayerLoc = {x: 160, y: 510};
-            showDialog('Елисей, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
-            if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
-            return;
-        }
+    if (routeKey && ROUTES[routeKey]) {
+        var points = ROUTES[routeKey];
+        var spline = new Phaser.Curves.Spline(points);
+        var follower = { t: 0 };
+        scene.tweens.add({
+            targets: follower,
+            t: 1,
+            duration: duration,
+            onUpdate: function() {
+                var p = spline.getPoint(follower.t);
+                playerContainer.x = p.x;
+                playerContainer.y = p.y;
+            },
+            onComplete: function() {
+                isMoving = false;
+                if (!location) return;
+                currentLocation = location;
 
-        if (needsPuzzle) {
-            if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
-            var p = TYPES[location.targetType].plural;
-            if (location.name === 'Причал' && !locations[0].completed) {
-                showDialog('Елисей, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
-            } else if (location.name === 'За рекой') {
-                showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 8 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
-            } else if (location.name === 'Великий Новгород') {
-                showDialog('Помоги построить храм!\nСобери 15 камней.', 'sadko');
+                if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
+                    updatePlayerSprite({name:'Причал'});
+                    lastPlayerLoc = {x: 160, y: 510};
+                    showDialog('Елисей, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
+                    if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
+                    return;
+                }
+
+                if (needsPuzzle) {
+                    if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
+                    var p = TYPES[location.targetType].plural;
+                    if (location.name === 'Причал' && !locations[0].completed) {
+                        showDialog('Елисей, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
+                    } else if (location.name === 'За рекой') {
+                        showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 8 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
+                    } else if (location.name === 'Великий Новгород') {
+                        showDialog('Помоги построить храм!\nСобери 15 камней.', 'sadko');
+                    }
+                }
             }
-        }
-    }});
+        });
+    } else {
+        // Запасной вариант: прямое перемещение, если маршрут не задан
+        scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
+            isMoving = false;
+            if (!location) return;
+            currentLocation = location;
+
+            if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
+                updatePlayerSprite({name:'Причал'});
+                lastPlayerLoc = {x: 160, y: 510};
+                showDialog('Елисей, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
+                if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
+                return;
+            }
+
+            if (needsPuzzle) {
+                if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
+                var p = TYPES[location.targetType].plural;
+                if (location.name === 'Причал' && !locations[0].completed) {
+                    showDialog('Елисей, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
+                } else if (location.name === 'За рекой') {
+                    showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 8 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
+                } else if (location.name === 'Великий Новгород') {
+                    showDialog('Помоги построить храм!\nСобери 15 камней.', 'sadko');
+                }
+            }
+        }});
+    }
 }
 
 function showEnding() {
@@ -429,7 +460,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + золотая обводка + частицы + ЗВУКИ -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + золотая обводка + частицы -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -601,11 +632,6 @@ function onDragEnd(pointer) {
                 document.body.style.overflow = 'auto';
                 dragLocked = true;
 
-                // 🔊 Звук свайпа
-                if (sfxSwipe && !sfxSwipe.isPlaying) {
-                    sfxSwipe.play();
-                }
-
                 if (!firstMoveMade) {
                     firstMoveMade = true;
                     clearHighlights();
@@ -679,7 +705,7 @@ function removeMatches(matches) {
             var tp = TYPES[targetType].plural;
             scoreText.setText('Собрано ' + tp + ': ' + collectedCount + ' / ' + targetCount);
 
-            // Волшебные звёздочки
+            // Волшебные звёздочки при сборе
             var emitter = scene.add.particles(icon.x, icon.y, 'particle_star', {
                 speed: { min: -120, max: 120 },
                 angle: { min: 0, max: 360 },
@@ -689,11 +715,6 @@ function removeMatches(matches) {
                 emitting: false
             });
             emitter.explode();
-
-            // 🔊 Звук сбора
-            if (sfxMatch && !sfxMatch.isPlaying) {
-                sfxMatch.play();
-            }
         }
         scene.tweens.add({ targets: icon, scaleX:0, scaleY:0, alpha:0, duration:200, onComplete: function(){ icon.destroy(); } });
         grid[icon.row][icon.col] = null;
@@ -736,10 +757,6 @@ function fillEmptySpaces(isInitial) {
         scene.time.delayedCall(100, function(){ checkMatches(true); });
     } else if (collectedCount >= targetCount) {
         puzzleActive = false;
-        // 🔊 Фанфары победы
-        if (sfxWin && !sfxWin.isPlaying) {
-            sfxWin.play();
-        }
         if (currentLocation) {
             currentLocation.completed = true;
             if (currentLocation.name === 'Причал' && !locations[1].completed) artifactCollected.bochka = true;
@@ -810,8 +827,6 @@ function loseLevel() {
     lives--;
     if (lives < 0) lives = 0;
     if (livesText) livesText.setText('❤️ x '+lives);
-    // 🔊 Звук поражения
-    if (sfxLose && !sfxLose.isPlaying) sfxLose.play();
     if (lives <= 0) {
         showEnding();
         return;
