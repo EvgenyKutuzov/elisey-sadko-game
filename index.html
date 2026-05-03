@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta property="og:title" content="Сон о Садко — игра про мальчика Елисея">
+    <meta property="og:title" content="Сон о Садко — игра мальчика Елисея">
     <meta property="og:description" content="Детская HTML5-игра по мотивам былины о Садко. Мальчик Елисей засыпает с книгой и попадает в мир Древнего Новгорода.">
     <meta property="og:image" content="https://evgenykutuzov.github.io/elisey-sadko-game/novgorod_map_start.png">
     <meta property="og:type" content="website">
@@ -75,6 +75,13 @@ var firstMoveMade = false;
 var highlightFrames = [];
 var finalDialogShown = false;
 
+// 🔊 Звуковые эффекты
+var sfxSwipe = null;
+var sfxMatch = null;
+var sfxWin = null;
+var sfxLose = null;
+var sfxWater = null;
+
 function preloadAssets() {
     this.load.image('mapBG_start', 'novgorod_map_start.png');
     this.load.image('mapBG_final', 'novgorod_map_final.png');
@@ -99,6 +106,12 @@ function preloadAssets() {
     this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
     this.load.image('particle_star', 'particle_star.png');
     this.load.audio('bgMusic', 'bg_music.mp3');
+    // 🔈 Загружаем звуки
+    this.load.audio('sfxSwipe', 'sfx_swipe.mp3');
+    this.load.audio('sfxMatch', 'sfx_match.mp3');
+    this.load.audio('sfxWin', 'sfx_win.mp3');
+    this.load.audio('sfxLose', 'sfx_lose.mp3');
+    this.load.audio('sfxWater', 'sfx_water.mp3');
 }
 
 function createGame() {
@@ -107,6 +120,13 @@ function createGame() {
         bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
         bgMusic.play();
     }
+    // Инициализируем звуки с ограничением громкости
+    sfxSwipe = this.sound.add('sfxSwipe', { volume: 0.5 });
+    sfxMatch = this.sound.add('sfxMatch', { volume: 0.5 });
+    sfxWin   = this.sound.add('sfxWin',   { volume: 0.6 });
+    sfxLose  = this.sound.add('sfxLose',  { volume: 0.6 });
+    sfxWater = this.sound.add('sfxWater', { volume: 0.5 });
+
     showPrologue.call(this);
 }
 
@@ -123,12 +143,15 @@ function showPrologue() {
     });
 }
 
-function showDialog(msg, portraitKey, showNextBtn) {
+// Добавлен параметр offsetY для поднятия/опускания диалога
+function showDialog(msg, portraitKey, showNextBtn, offsetY) {
     var scene = game.scene.scenes[0];
     if (dialogGroup) {
         dialogGroup.destroy();
         dialogGroup = null;
     }
+    
+    offsetY = offsetY || 0;
     
     var textStyle = { fontSize:'15px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', align:'left', wordWrap:{width:200}, stroke:'#000000', strokeThickness:2 };
     var tmpText = scene.add.text(0, 0, msg, textStyle);
@@ -141,7 +164,7 @@ function showDialog(msg, portraitKey, showNextBtn) {
     var bgWidth = textWidth + paddingX * 2;
     var bgHeight = textHeight + paddingY * 2;
     
-    var bgCenterY = 590;
+    var bgCenterY = 590 + offsetY;
     var bgLeftX = 60;
     var bgCenterX = bgLeftX + bgWidth / 2;
     
@@ -159,7 +182,8 @@ function showDialog(msg, portraitKey, showNextBtn) {
     dialogGroup.add(dialogText);
     
     if (portraitKey) {
-        var portrait = scene.add.image(80, bgCenterY, portraitKey);
+        var portraitX = (portraitKey === 'sadko') ? 80 : 50; // Старец сдвинут левее
+        var portrait = scene.add.image(portraitX, bgCenterY, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(95, 180);
         } else {
@@ -243,6 +267,18 @@ function drawMap() {
             loc.labelBg = labelBg;
             loc.labelText = labelText;
 
+            // ✨ Пульсация для активной одиночной иконки
+            if (activeLocs.length === 1 && loc.unlocked && !loc.completed) {
+                self.tweens.add({
+                    targets: icon,
+                    scaleX: 1.1,
+                    scaleY: 1.1,
+                    duration: 600,
+                    yoyo: true,
+                    repeat: -1
+                });
+            }
+
             icon.on('pointerdown', function(){
                 if (isMoving || puzzleActive) return;
                 if (loc.completed) return;
@@ -257,7 +293,8 @@ function drawMap() {
         lastPlayerLoc = {x: 50, y: 350};
         if (!finalDialogShown) {
             finalDialogShown = true;
-            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false);
+            // Финальный диалог поднят выше
+            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false, -50);
         }
     }
 
@@ -331,6 +368,14 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
 
+    // 🔊 Плеск воды при плавании
+    if (duration > 1500 && sfxWater) {
+        sfxWater.play();
+        scene.time.delayedCall(3000, function() {
+            if (sfxWater.isPlaying) sfxWater.stop();
+        });
+    }
+
     scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
         isMoving = false;
         if (!location) return;
@@ -379,7 +424,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + золотая обводка + частицы -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + золотая обводка + частицы + ЗВУКИ -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -551,6 +596,11 @@ function onDragEnd(pointer) {
                 document.body.style.overflow = 'auto';
                 dragLocked = true;
 
+                // 🔊 Звук свайпа (без наложений)
+                if (sfxSwipe && !sfxSwipe.isPlaying) {
+                    sfxSwipe.play();
+                }
+
                 if (!firstMoveMade) {
                     firstMoveMade = true;
                     clearHighlights();
@@ -634,6 +684,11 @@ function removeMatches(matches) {
                 emitting: false
             });
             emitter.explode();
+
+            // 🔊 Звук сбора комбинации
+            if (sfxMatch && !sfxMatch.isPlaying) {
+                sfxMatch.play();
+            }
         }
         scene.tweens.add({ targets: icon, scaleX:0, scaleY:0, alpha:0, duration:200, onComplete: function(){ icon.destroy(); } });
         grid[icon.row][icon.col] = null;
@@ -676,6 +731,14 @@ function fillEmptySpaces(isInitial) {
         scene.time.delayedCall(100, function(){ checkMatches(true); });
     } else if (collectedCount >= targetCount) {
         puzzleActive = false;
+        // 🔊 Фанфары победы
+        if (sfxWin) {
+            sfxWin.play();
+            // Обрезаем длинные фанфары
+            scene.time.delayedCall(3000, function() {
+                if (sfxWin.isPlaying) sfxWin.stop();
+            });
+        }
         if (currentLocation) {
             currentLocation.completed = true;
             if (currentLocation.name === 'Причал' && !locations[1].completed) artifactCollected.bochka = true;
@@ -746,6 +809,8 @@ function loseLevel() {
     lives--;
     if (lives < 0) lives = 0;
     if (livesText) livesText.setText('❤️ x '+lives);
+    // 🔊 Звук поражения
+    if (sfxLose) sfxLose.play();
     if (lives <= 0) {
         showEnding();
         return;
