@@ -194,10 +194,28 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
     }
     
     if (playButton && !showNextBtn) {
+        // показываем кнопку ИГРАТЬ с мягкой пульсацией
         playButton.setVisible(true);
         playButton.setPosition(200, 310);
+        // запускаем/перезапускаем твин
+        if (playButton.customTween) {
+            playButton.customTween.stop();
+        }
+        playButton.setAlpha(1);
+        playButton.customTween = scene.tweens.add({
+            targets: playButton,
+            alpha: { from: 1, to: 0.65 },
+            duration: 800,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
     } else if (playButton) {
         playButton.setVisible(false);
+        if (playButton.customTween) {
+            playButton.customTween.stop();
+            playButton.customTween = null;
+        }
     }
     
     if (showNextBtn) {
@@ -205,6 +223,16 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
             fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
+        
+        // мягкая пульсация для кнопки ДАЛЕЕ
+        scene.tweens.add({
+            targets: nextBtn,
+            alpha: { from: 1, to: 0.65 },
+            duration: 800,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
         
         nextBtn.on('pointerdown', function(){
             dialogGroup.destroy();
@@ -232,7 +260,13 @@ function hideDialog() {
         dialogGroup.destroy();
         dialogGroup = null;
     }
-    if (playButton) playButton.setVisible(false);
+    if (playButton) {
+        playButton.setVisible(false);
+        if (playButton.customTween) {
+            playButton.customTween.stop();
+            playButton.customTween = null;
+        }
+    }
 }
 
 function drawMap() {
@@ -271,11 +305,11 @@ function drawMap() {
             if (activeLocs.length === 1 && loc.unlocked && !loc.completed) {
                 self.tweens.add({
                     targets: icon,
-                    scaleX: 1.00075,
-                    scaleY: 1.00075,
-                    duration: 1200,
+                    alpha: { from: 1, to: 0.65 },
+                    duration: 1000,
                     yoyo: true,
-                    repeat: -1
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
                 });
             }
 
@@ -318,6 +352,8 @@ function drawMap() {
 
     dialogGroup = null;
     playButton = this.add.text(200, 310, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
+    // На старте твин для кнопки ИГРАТЬ не запускаем, он будет включаться в showDialog
+    playButton.customTween = null;
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
 
     if (allCompleted) {
@@ -325,6 +361,17 @@ function drawMap() {
             fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
+        
+        // мягкая пульсация для кнопки Проснуться
+        this.tweens.add({
+            targets: dreamBtn,
+            alpha: { from: 1, to: 0.65 },
+            duration: 800,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
         dreamBtn.on('pointerdown', function(){ showEnding(); });
     }
 
