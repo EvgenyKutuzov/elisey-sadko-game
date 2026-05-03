@@ -71,8 +71,11 @@ var dragStartX=0, dragStartY=0;
 var dragPointerStartX=0, dragPointerStartY=0;
 var dragLocked = false;
 
-// Флаг для подсветки целевых фишек
 var firstMoveMade = false;
+// Массив для хранения золотых рамок подсветки
+var highlightFrames = [];
+// Флаг, чтобы финальный диалог показывался только один раз
+var finalDialogShown = false;
 
 function preloadAssets() {
     this.load.image('mapBG_start', 'novgorod_map_start.png');
@@ -147,7 +150,6 @@ function showDialog(msg, portraitKey, showNextBtn) {
     var bgCenterX = bgLeftX + bgWidth / 2;
     
     if (portraitKey) {
-        // Сдвигаем текст правее, чтобы портрет не перекрывал его
         bgLeftX = 130;
         bgCenterX = bgLeftX + bgWidth / 2;
     }
@@ -161,7 +163,6 @@ function showDialog(msg, portraitKey, showNextBtn) {
     dialogGroup.add(dialogText);
     
     if (portraitKey) {
-        // Портрет также сдвигаем правее
         var portrait = scene.add.image(80, bgCenterY, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(95, 180);
@@ -258,6 +259,11 @@ function drawMap() {
 
     if (allCompleted) {
         lastPlayerLoc = {x: 50, y: 350};
+        // Финальный диалог с Садко (показывается только один раз)
+        if (!finalDialogShown) {
+            finalDialogShown = true;
+            showDialog('Вот и построен храм, Женя! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false);
+        }
     }
 
     var startX = lastPlayerLoc ? lastPlayerLoc.x : 50;
@@ -378,14 +384,14 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + подсветка целей -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + золотая обводка -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
     collectedCount = 0; grid = []; targetType = location.targetType; targetCount = location.targetCount;
     movesLeft = 25;
-    firstMoveMade = false; // сброс флага подсветки
+    firstMoveMade = false;
     var typePlural = TYPES[targetType].plural;
 
     scene.add.image(200, 350, location.puzzleBg).setDisplaySize(400, 700);
@@ -448,8 +454,12 @@ function startPuzzle(location) {
         }
     }
 
-    // Подсвечиваем целевые фишки при старте
-    highlightTargets();
+    // Автоочистка стартовых совпадений (без анимации), после неё – подсветка
+    scene.time.delayedCall(300, function(){
+        checkMatches(true);
+        // Подсвечиваем только когда все случайные совпадения убраны
+        scene.time.delayedCall(200, highlightTargets);
+    });
 
     var backBtn = scene.add.text(200, 660, 'Вернуться на карту', {
         fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
@@ -459,31 +469,29 @@ function startPuzzle(location) {
         puzzleActive = false;
         drawMap.call(scene);
     });
-
-    // Автоудаление стартовых совпадений (без анимации!)
-    scene.time.delayedCall(300, function(){
-        checkMatches(true);
-    });
 }
 
 function highlightTargets() {
+    clearHighlights();
     for (var r = 0; r < ROWS; r++) {
         for (var c = 0; c < COLS; c++) {
             var icon = grid[r][c];
             if (icon && icon.artifactType === targetType) {
-                icon.setTint(0xffd700); // золотая подсветка
+                var scene = game.scene.scenes[0];
+                var frame = scene.add.rectangle(icon.x, icon.y, 82, 82);
+                frame.setStrokeStyle(3, 0xffd700);
+                frame.setFillStyle(0x000000, 0);
+                highlightFrames.push({ frame: frame, icon: icon });
             }
         }
     }
 }
 
 function clearHighlights() {
-    for (var r = 0; r < ROWS; r++) {
-        for (var c = 0; c < COLS; c++) {
-            var icon = grid[r][c];
-            if (icon) icon.clearTint();
-        }
-    }
+    highlightFrames.forEach(function(item) {
+        item.frame.destroy();
+    });
+    highlightFrames = [];
 }
 
 function showTutorial() {
@@ -550,7 +558,6 @@ function onDragEnd(pointer) {
                 document.body.style.overflow = 'auto';
                 dragLocked = true;
 
-                // Первый ход сделан — убираем подсветку
                 if (!firstMoveMade) {
                     firstMoveMade = true;
                     clearHighlights();
@@ -641,7 +648,6 @@ function fillEmptySpaces(isInitial) {
                 if (r !== emptyRow) {
                     grid[emptyRow][c] = grid[r][c]; grid[r][c] = null;
                     grid[emptyRow][c].row = emptyRow; grid[emptyRow][c].col = c;
-                    // Убираем анимацию при стартовом заполнении
                     scene.tweens.add({ targets: grid[emptyRow][c], y: sy + emptyRow * CELL_SIZE + CELL_SIZE/2, duration: isInitial ? 0 : 200 });
                 }
                 emptyRow--;
@@ -663,7 +669,7 @@ function fillEmptySpaces(isInitial) {
         }
     }
     if (isInitial) {
-        // После мгновенной сборки проверяем ещё раз и, если всё ещё есть тройки, убираем без анимации
+        // После мгновенной сборки проверяем ещё раз (без анимации)
         scene.time.delayedCall(100, function(){ checkMatches(true); });
     } else if (collectedCount >= targetCount) {
         puzzleActive = false;
