@@ -53,7 +53,7 @@ var currentLocation = null;
 var livesText, lives=5, maxLives=5;
 
 var puzzleActive = false;
-var ROWS=6, COLS=6, CELL_SIZE=55;
+var ROWS=5, COLS=5, CELL_SIZE=76;
 var TYPES = {
     bochki:  { name:'Бочки',   img:'bochki55',   plural:'бочек' },
     gusli:   { name:'Струны и колки', img:'gusli55',    plural:'струн и колков' },
@@ -157,12 +157,9 @@ function showDialog(msg, portraitKey, showNextBtn) {
     dialogGroup.add(dialogText);
     
     if (portraitKey) {
+        // Садко и Старец теперь 120×120
         var portrait = scene.add.image(35, bgCenterY, portraitKey);
-        if (portraitKey === 'sadko') {
-            portrait.setDisplaySize(63, 120);
-        } else {
-            portrait.setDisplaySize(80, 80);
-        }
+        portrait.setDisplaySize(120, 120);
         dialogGroup.add(portrait);
     }
     
@@ -376,7 +373,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -397,31 +394,31 @@ function startPuzzle(location) {
     var titleText = location.name;
     var titleStyle = { fontSize:'22px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', stroke:'#000000', strokeThickness:4 };
     var titleTmp = scene.add.text(0,0,titleText,titleStyle);
-    scene.add.rectangle(200, 30, titleTmp.width + 20, titleTmp.height + 10, 0x000000, 0.6).setOrigin(0.5);
-    scene.add.text(200, 30, titleText, titleStyle).setOrigin(0.5);
+    scene.add.rectangle(200, 20, titleTmp.width + 20, titleTmp.height + 10, 0x000000, 0.6).setOrigin(0.5);
+    scene.add.text(200, 20, titleText, titleStyle).setOrigin(0.5);
     titleTmp.destroy();
 
     var cntText = 'Собрано ' + typePlural + ': 0 / ' + targetCount;
     var cntStyle = { fontSize:'16px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffcc00', stroke:'#000000', strokeThickness:3 };
     var cntTmp = scene.add.text(0,0,cntText,cntStyle);
-    scene.add.rectangle(200, 68, cntTmp.width + 20, cntTmp.height + 10, 0x000000, 0.6).setOrigin(0.5);
-    scoreText = scene.add.text(200, 68, cntText, cntStyle).setOrigin(0.5);
+    scene.add.rectangle(200, 50, cntTmp.width + 20, cntTmp.height + 10, 0x000000, 0.6).setOrigin(0.5);
+    scoreText = scene.add.text(200, 50, cntText, cntStyle).setOrigin(0.5);
     cntTmp.destroy();
 
     var movesStr = 'Ходы: ' + movesLeft;
     var mStyle = { fontSize:'16px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', stroke:'#000000', strokeThickness:3 };
     var mTmp = scene.add.text(0,0,movesStr,mStyle);
-    scene.add.rectangle(200, 100, mTmp.width + 20, mTmp.height + 10, 0x000000, 0.6).setOrigin(0.5);
-    movesText = scene.add.text(200, 100, movesStr, mStyle).setOrigin(0.5);
+    scene.add.rectangle(200, 80, mTmp.width + 20, mTmp.height + 10, 0x000000, 0.6).setOrigin(0.5);
+    movesText = scene.add.text(200, 80, movesStr, mStyle).setOrigin(0.5);
     mTmp.destroy();
 
-    var helpBtn = scene.add.text(40, 10, '?', {
+    var helpBtn = scene.add.text(40, 30, '?', {
         fontSize:'20px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#333333', padding:{x:6,y:4}
     }).setOrigin(0,0).setInteractive();
     helpBtn.on('pointerdown', showTutorial);
 
-    var musicBtnLevel = scene.add.text(380, 10, musicOn ? '🔊' : '🔇', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
+    var musicBtnLevel = scene.add.text(380, 30, musicOn ? '🔊' : '🔇', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
     musicBtnLevel.on('pointerdown', function(){
         musicOn = !musicOn;
         if (bgMusic) bgMusic.setVolume(musicOn ? 0.4 : 0);
@@ -436,7 +433,7 @@ function startPuzzle(location) {
             var x = startX + col * CELL_SIZE + CELL_SIZE / 2;
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
-            icon.setDisplaySize(46, 46);
+            icon.setDisplaySize(68, 68);
             icon.setInteractive();
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
@@ -444,7 +441,7 @@ function startPuzzle(location) {
         }
     }
 
-    var backBtn = scene.add.text(200, 675, 'Вернуться на карту', {
+    var backBtn = scene.add.text(200, 660, 'Вернуться на карту', {
         fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#333333', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
     }).setOrigin(0.5).setInteractive();
@@ -618,7 +615,7 @@ function fillEmptySpaces(isInitial) {
                 var typeKey = TYPE_KEYS[Math.floor(Math.random() * TYPE_KEYS.length)];
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
-                icon.setDisplaySize(46, 46);
+                icon.setDisplaySize(68, 68);
                 icon.setInteractive();
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
