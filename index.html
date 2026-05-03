@@ -75,7 +75,7 @@ var firstMoveMade = false;
 var highlightFrames = [];
 var finalDialogShown = false;
 
-// Маршруты (сплайны), чтобы персонаж ходил только по берегу
+// Маршруты со скорректированными координатами для обхода воды
 const ROUTES = {
     'prichal_to_za_rekoy': [
         {x: 200, y: 520}, {x: 260, y: 350}, {x: 320, y: 200}, {x: 350, y: 130}
@@ -259,12 +259,12 @@ function drawMap() {
             loc.labelBg = labelBg;
             loc.labelText = labelText;
 
-            // ✨ Лёгкое, ненавязчивое мигание
+            // ✨ Минимальное мигание (1%)
             if (activeLocs.length === 1 && loc.unlocked && !loc.completed) {
                 self.tweens.add({
                     targets: icon,
-                    scaleX: 1.02,
-                    scaleY: 1.02,
+                    scaleX: 1.01,
+                    scaleY: 1.01,
                     duration: 800,
                     yoyo: true,
                     repeat: -1
@@ -364,7 +364,7 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
 
-    // Определяем маршрут для обхода воды
+    // Используем плавные маршруты (сплайны)
     var routeKey = '';
     if (location && location.name === 'За рекой') routeKey = 'prichal_to_za_rekoy';
     else if (location && location.name === 'Причал' && locations[1].completed) routeKey = 'za_rekoy_to_prichal';
@@ -410,7 +410,7 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
             }
         });
     } else {
-        // Запасной вариант: прямое перемещение, если маршрут не задан
+        // Запасной прямой путь
         scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
             isMoving = false;
             if (!location) return;
@@ -460,7 +460,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + золотая обводка + частицы -----
+// ----- ГЕЙМПЛЕЙ (match-3) -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -705,7 +705,6 @@ function removeMatches(matches) {
             var tp = TYPES[targetType].plural;
             scoreText.setText('Собрано ' + tp + ': ' + collectedCount + ' / ' + targetCount);
 
-            // Волшебные звёздочки при сборе
             var emitter = scene.add.particles(icon.x, icon.y, 'particle_star', {
                 speed: { min: -120, max: 120 },
                 angle: { min: 0, max: 360 },
