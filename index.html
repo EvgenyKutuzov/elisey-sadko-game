@@ -198,6 +198,7 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         dialogGroup.add(portrait);
     }
 
+    // Кнопка ИГРАТЬ показывается только если нет кнопки ДАЛЕЕ и диалог не финальный
     if (playButton && !showNextBtn) {
         playButton.setVisible(true);
         playButton.setPosition(200, 310);
@@ -358,31 +359,19 @@ function drawMap() {
 
     livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
-    // Рюкзачок ПОЯВЛЯЕТСЯ ТОЛЬКО В ФИНАЛЕ
+    // В финале — только кнопка «Проснуться» и диалог (рюкзачок убран)
     if (allCompleted) {
         lastPlayerLoc = {x: 50, y: 350};
         if (!finalDialogShown) {
             finalDialogShown = true;
-            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал! Загляни в свой рюкзачок — там всё, что тебе приснилось…', 'sadko', false, -50);
+            // Финальный диалог без упоминания рюкзачка
+            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false, -50);
+            // Сразу скрываем кнопку ИГРАТЬ, если она вдруг появилась
+            if (playButton) {
+                playButton.setVisible(false);
+                if (playButton.customTween) playButton.customTween.stop();
+            }
         }
-
-        var memoryBtn = this.add.text(380, 80, '🎒', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
-        memoryBtn.on('pointerdown', function(){
-            if (isMoving || puzzleActive) return;
-            showMemories();
-        });
-        this.tweens.add({
-            targets: memoryBtn,
-            alpha: { from: 1, to: 0.65 },
-            duration: 800,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-        this.add.text(380, 108, 'Воспоминания', {
-            fontSize: '9px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial',
-            stroke: '#000000', strokeThickness: 2
-        }).setOrigin(1,0);
 
         var dreamBtn = this.add.text(200, 670, '🌟 Проснуться 🌟', {
             fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
@@ -462,6 +451,7 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
 }
 
 function showMemories() {
+    // Эта функция больше не вызывается из карты, но оставлю её для возможного использования
     if (isMoving) return;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
@@ -495,11 +485,7 @@ function showMemories() {
                 stroke: '#000000', strokeThickness: 2
             });
         } else {
-            var silhouette = scene.add.image(100, y, item.img).setDisplaySize(80, 80).setAlpha(0.2);
-            scene.add.text(200, y - 4, 'А это что такое?', {
-                fontSize: '13px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
-                stroke: '#000000', strokeThickness: 2
-            });
+            // Несобранные не показываем
         }
     });
 
@@ -522,40 +508,46 @@ function showEnding() {
     if (lives <= 0 && !allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.85);
 
-        scene.add.text(200, 40, 'Елисей проснулся...', {
-            fontSize: '20px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
-            stroke: '#000000', strokeThickness: 4
+        scene.add.text(200, 50, 'Елисей проснулся и понял,\nчто запомнил не всё…', {
+            fontSize: '18px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+            align: 'center', stroke: '#000000', strokeThickness: 4
         }).setOrigin(0.5);
 
-        var collectedCount = (artifactCollected.uzelok ? 1 : 0) + (artifactCollected.rakuska ? 1 : 0) + (artifactCollected.krestik ? 1 : 0);
-        scene.add.text(200, 90, 'Ему запомнилось: ' + collectedCount + ' из 3', {
-            fontSize: '16px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
-            stroke: '#000000', strokeThickness: 3
-        }).setOrigin(0.5);
+        var collectedItems = [];
+        if (artifactCollected.uzelok) collectedItems.push({ img: 'uzelok_art', label: 'Верёвочный узелок' });
+        if (artifactCollected.rakuska) collectedItems.push({ img: 'river_shell_art', label: 'Ракушка' });
+        if (artifactCollected.krestik) collectedItems.push({ img: 'krestik_art', label: 'Деревянный крестик' });
 
-        var items = [
-            { collected: artifactCollected.uzelok, x: 120, y: 180, img: 'uzelok_art' },
-            { collected: artifactCollected.rakuska, x: 200, y: 180, img: 'river_shell_art' },
-            { collected: artifactCollected.krestik, x: 280, y: 180, img: 'krestik_art' }
-        ];
-        items.forEach(function(item) {
-            if (item.collected) {
-                scene.add.image(item.x, item.y, item.img).setDisplaySize(60, 60);
-            } else {
-                var sil = scene.add.image(item.x, item.y, item.img).setDisplaySize(60, 60).setAlpha(0.25);
-                scene.add.text(item.x, item.y + 35, 'А это что?', {
-                    fontSize: '10px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
-                    stroke: '#000000', strokeThickness: 2
-                }).setOrigin(0.5);
-            }
-        });
+        if (collectedItems.length > 0) {
+            var startY = 160;
+            var stepY = 90;
+            collectedItems.forEach(function(item, index) {
+                var y = startY + index * stepY;
+                scene.add.image(130, y, item.img).setDisplaySize(60, 60);
+                scene.add.text(200, y, item.label, {
+                    fontSize: '16px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
+                    stroke: '#000000', strokeThickness: 3
+                }).setOrigin(0, 0.5);
+            });
 
-        scene.add.text(200, 290, 'Но сон был неполным…\nМожет быть, попробовать ещё раз\nи собрать всё, что приснилось?', {
+            var textY = startY + collectedItems.length * stepY + 20;
+            scene.add.text(200, textY, 'Остальное ускользнуло,\nкак утренний туман…', {
+                fontSize: '14px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
+                align: 'center', stroke: '#000000', strokeThickness: 2
+            }).setOrigin(0.5);
+        } else {
+            scene.add.text(200, 200, 'Ничего не запомнилось…\nСон растаял без следа.', {
+                fontSize: '16px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
+                align: 'center', stroke: '#000000', strokeThickness: 2
+            }).setOrigin(0.5);
+        }
+
+        scene.add.text(200, 440, 'Может быть, попробовать ещё раз\nи увидеть весь сон целиком?', {
             fontSize: '15px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
             align: 'center', stroke: '#000000', strokeThickness: 3
         }).setOrigin(0.5);
 
-        var restartBtn = scene.add.text(200, 400, '🔄 Начать заново', {
+        var restartBtn = scene.add.text(200, 520, '🔄 Начать заново', {
             fontSize: '18px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
             backgroundColor: '#333333', padding: { x: 12, y: 6 }
         }).setOrigin(0.5).setInteractive();
@@ -567,7 +559,7 @@ function showEnding() {
     if (allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.9);
         scene.add.text(200, 40, 'Елисей запомнил сон целиком', {
-            fontSize: '17px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+            fontSize: '18px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
             stroke: '#000000', strokeThickness: 4, align: 'center'
         }).setOrigin(0.5);
 
@@ -597,7 +589,7 @@ function showEnding() {
         return;
     }
 
-    // Редкий случай: не все артефакты, но жизни ещё есть (страховка)
+    // Запасной вариант
     scene.add.image(200, 350, 'epilog_udivlenie').setDisplaySize(400, 700);
     scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
     scene.add.text(200, 580, 'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?', {
