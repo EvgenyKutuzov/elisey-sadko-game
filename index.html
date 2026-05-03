@@ -21,7 +21,8 @@ var config = {
     width: 400,
     height: 700,
     backgroundColor: '#000000',
-    render: { roundPixels: true, antialias: false, pixelArt: true },
+    // Включаем сглаживание для всей игры (задники, персонажи будут красивыми)
+    render: { roundPixels: true, antialias: true, pixelArt: false },
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -374,7 +375,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 (имена файлов старые, размер новый) -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 (чёткие, но с сохранением сглаживания для всего остального) -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -436,6 +437,8 @@ function startPuzzle(location) {
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
             // Файл теперь 80×80, отображаем без масштабирования — идеальная чёткость
             icon.setDisplaySize(80, 80);
+            // Включаем NEAREST только для иконок "три в ряд" — они останутся чёткими
+            icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
             icon.setInteractive();
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
@@ -618,6 +621,8 @@ function fillEmptySpaces(isInitial) {
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
                 icon.setDisplaySize(80, 80);
+                // Включаем NEAREST только для иконок "три в ряд"
+                icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
                 icon.setInteractive();
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
