@@ -21,7 +21,6 @@ var config = {
     width: 400,
     height: 700,
     backgroundColor: '#000000',
-    // Включаем сглаживание для всей игры (задники, персонажи будут красивыми)
     render: { roundPixels: true, antialias: true, pixelArt: false },
     scale: {
         mode: Phaser.Scale.FIT,
@@ -81,7 +80,7 @@ function preloadAssets() {
     this.load.image('prichal_puzzle', 'prichal_puzzle.png');
     this.load.image('za_rekoy_puzzle', 'za_rekoy_puzzle.png');
     this.load.image('novgorod_puzzle', 'novgorod_puzzle.png');
-    // Иконки 80×80 (пиксель-в-пиксель) — имена файлов оставлены старые, чтобы тебе не переименовывать
+    // Иконки 80×80 — имена файлов старые
     this.load.image('bochki55', 'bochki_220.png');
     this.load.image('gusli55', 'gusli_220.png');
     this.load.image('kirpich55', 'kirpich_220.png');
@@ -159,10 +158,13 @@ function showDialog(msg, portraitKey, showNextBtn) {
     
     if (portraitKey) {
         var portrait = scene.add.image(60, bgCenterY, portraitKey);
+        // Увеличиваем в 1.5 раза относительно Жени (120 → 180)
         if (portraitKey === 'sadko') {
-            portrait.setDisplaySize(63, 120);
+            // Родные пропорции: 126×240 → 95×180 (1.5 от 63×120)
+            portrait.setDisplaySize(95, 180);
         } else {
-            portrait.setDisplaySize(120, 120);
+            // Старец: 240×240 → 180×180
+            portrait.setDisplaySize(180, 180);
         }
         dialogGroup.add(portrait);
     }
@@ -300,7 +302,6 @@ function drawMap() {
     })();
     var htemp = this.add.text(0,0,hintText,{ fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
     var hw=htemp.width, hh=htemp.height; htemp.destroy();
-    // Финальная подсказка сдвинута левее, чтобы не перекрывать кнопку звука
     var hintX = allCompleted ? 240 : 220;
     this.add.rectangle(hintX, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
     mapHintText = this.add.text(hintX, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
@@ -375,7 +376,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 (чёткие, но с сохранением сглаживания для всего остального) -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -435,9 +436,7 @@ function startPuzzle(location) {
             var x = startX + col * CELL_SIZE + CELL_SIZE / 2;
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
-            // Файл теперь 80×80, отображаем без масштабирования — идеальная чёткость
             icon.setDisplaySize(80, 80);
-            // Включаем NEAREST только для иконок "три в ряд" — они останутся чёткими
             icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
             icon.setInteractive();
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
@@ -621,7 +620,6 @@ function fillEmptySpaces(isInitial) {
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
                 icon.setDisplaySize(80, 80);
-                // Включаем NEAREST только для иконок "три в ряд"
                 icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
                 icon.setInteractive();
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
