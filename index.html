@@ -80,25 +80,25 @@ function preloadAssets() {
     var progressBox = this.add.graphics();
     progressBox.fillStyle(0x222222, 0.8);
     progressBox.fillRect(80, 320, 240, 50);
-    
+
     var loadingText = this.add.text(200, 300, 'Загрузка...', {
         fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial'
     }).setOrigin(0.5);
-    
+
     var progressBar = this.add.graphics();
-    
+
     this.load.on('progress', function (value) {
         progressBar.clear();
         progressBar.fillStyle(0x87CEEB, 1);
         progressBar.fillRect(90, 330, 220 * value, 30);
     });
-    
+
     this.load.on('complete', function () {
         progressBar.destroy();
         progressBox.destroy();
         loadingText.destroy();
     });
-    
+
     this.load.image('mapBG_start', 'novgorod_map_start.png');
     this.load.image('mapBG_final', 'novgorod_map_final.png');
     this.load.image('prichal_icon', 'prichal_icon.png');
@@ -156,37 +156,37 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         dialogGroup.destroy();
         dialogGroup = null;
     }
-    
+
     offsetY = offsetY || 0;
-    
+
     var textStyle = { fontSize:'15px', fontFamily:'Comfortaa, Arial', fontStyle:'bold', fill:'#ffffff', align:'left', wordWrap:{width:200}, stroke:'#000000', strokeThickness:2 };
     var tmpText = scene.add.text(0, 0, msg, textStyle);
     var textWidth = tmpText.width;
     var textHeight = tmpText.height;
     tmpText.destroy();
-    
+
     var paddingX = 20;
     var paddingY = 16;
     var bgWidth = textWidth + paddingX * 2;
     var bgHeight = textHeight + paddingY * 2;
-    
+
     var bgCenterY = 590 + offsetY;
     var bgLeftX = 60;
     var bgCenterX = bgLeftX + bgWidth / 2;
-    
+
     if (portraitKey) {
         bgLeftX = 130;
         bgCenterX = bgLeftX + bgWidth / 2;
     }
-    
+
     dialogGroup = scene.add.group();
-    
+
     var bg = scene.add.rectangle(bgCenterX, bgCenterY, bgWidth, bgHeight, 0x000000, 0.8);
     dialogGroup.add(bg);
-    
+
     var dialogText = scene.add.text(bgLeftX + paddingX, bgCenterY - bgHeight/2 + paddingY, msg, textStyle);
     dialogGroup.add(dialogText);
-    
+
     if (portraitKey) {
         var portraitX = (portraitKey === 'sadko') ? 80 : 70;
         var portrait = scene.add.image(portraitX, bgCenterY, portraitKey);
@@ -197,7 +197,7 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         }
         dialogGroup.add(portrait);
     }
-    
+
     if (playButton && !showNextBtn) {
         playButton.setVisible(true);
         playButton.setPosition(200, 310);
@@ -220,13 +220,13 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
             playButton.customTween = null;
         }
     }
-    
+
     if (showNextBtn) {
         var nextBtn = scene.add.text(200, 310, 'ДАЛЕЕ', {
             fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
-        
+
         scene.tweens.add({
             targets: nextBtn,
             alpha: { from: 1, to: 0.65 },
@@ -235,7 +235,7 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
-        
+
         nextBtn.on('pointerdown', function(){
             dialogGroup.destroy();
             dialogGroup = null;
@@ -252,7 +252,7 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
             if (mapHintText) mapHintText.setText('Нажми на иконку «Великий Новгород»');
             drawMap.call(scene);
         });
-        
+
         dialogGroup.add(nextBtn);
     }
 }
@@ -329,14 +329,6 @@ function drawMap() {
         });
     }
 
-    if (allCompleted) {
-        lastPlayerLoc = {x: 50, y: 350};
-        if (!finalDialogShown) {
-            finalDialogShown = true;
-            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал! Загляни в свой рюкзачок — там всё, что тебе приснилось…', 'sadko', false, -50);
-        }
-    }
-
     var startX = lastPlayerLoc ? lastPlayerLoc.x : 50;
     var startY = lastPlayerLoc ? lastPlayerLoc.y : 350;
     playerContainer = this.add.container(startX, startY);
@@ -366,15 +358,19 @@ function drawMap() {
 
     livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
-    // Рюкзачок строго под кнопкой звука и жизнями
-    var memoryBtn = this.add.text(380, 80, '🎒', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
-    memoryBtn.on('pointerdown', function(){
-        if (isMoving || puzzleActive) return;
-        showMemories();
-    });
-
-    // В финале – мягкая пульсация рюкзачка и подсказка
+    // Рюкзачок ПОЯВЛЯЕТСЯ ТОЛЬКО В ФИНАЛЕ
     if (allCompleted) {
+        lastPlayerLoc = {x: 50, y: 350};
+        if (!finalDialogShown) {
+            finalDialogShown = true;
+            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал! Загляни в свой рюкзачок — там всё, что тебе приснилось…', 'sadko', false, -50);
+        }
+
+        var memoryBtn = this.add.text(380, 80, '🎒', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
+        memoryBtn.on('pointerdown', function(){
+            if (isMoving || puzzleActive) return;
+            showMemories();
+        });
         this.tweens.add({
             targets: memoryBtn,
             alpha: { from: 1, to: 0.65 },
@@ -392,7 +388,7 @@ function drawMap() {
             fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
-        
+
         this.tweens.add({
             targets: dreamBtn,
             alpha: { from: 1, to: 0.65 },
@@ -401,7 +397,7 @@ function drawMap() {
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
-        
+
         dreamBtn.on('pointerdown', function(){ showEnding(); });
     }
 
@@ -454,7 +450,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
 
         if (needsPuzzle) {
             if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
-            var p = TYPES[location.targetType].plural;
             if (location.name === 'Причал' && !locations[0].completed) {
                 showDialog('Елисей, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
             } else if (location.name === 'За рекой') {
@@ -500,10 +495,9 @@ function showMemories() {
                 stroke: '#000000', strokeThickness: 2
             });
         } else {
-            // Полупрозрачный силуэт + «забыто»
             var silhouette = scene.add.image(100, y, item.img).setDisplaySize(80, 80).setAlpha(0.2);
-            scene.add.text(200, y - 4, 'забыто', {
-                fontSize: '14px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
+            scene.add.text(200, y - 4, 'А это что такое?', {
+                fontSize: '13px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
                 stroke: '#000000', strokeThickness: 2
             });
         }
@@ -527,7 +521,7 @@ function showEnding() {
     // Плохая концовка (проигрыш всех жизней)
     if (lives <= 0 && !allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.85);
-        
+
         scene.add.text(200, 40, 'Елисей проснулся...', {
             fontSize: '20px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
             stroke: '#000000', strokeThickness: 4
@@ -548,9 +542,8 @@ function showEnding() {
             if (item.collected) {
                 scene.add.image(item.x, item.y, item.img).setDisplaySize(60, 60);
             } else {
-                // Полупрозрачный силуэт и слово «забыто» снизу
                 var sil = scene.add.image(item.x, item.y, item.img).setDisplaySize(60, 60).setAlpha(0.25);
-                scene.add.text(item.x, item.y + 35, 'забыто', {
+                scene.add.text(item.x, item.y + 35, 'А это что?', {
                     fontSize: '10px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
                     stroke: '#000000', strokeThickness: 2
                 }).setOrigin(0.5);
@@ -573,8 +566,8 @@ function showEnding() {
     // Хорошая концовка (все артефакты собраны)
     if (allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.9);
-        scene.add.text(200, 40, 'Все три предмета из сна остались с ним', {
-            fontSize: '16px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+        scene.add.text(200, 40, 'Елисей запомнил сон целиком', {
+            fontSize: '17px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
             stroke: '#000000', strokeThickness: 4, align: 'center'
         }).setOrigin(0.5);
 
@@ -604,7 +597,7 @@ function showEnding() {
         return;
     }
 
-    // Редкий случай: не все артефакты, но жизни ещё есть (технически почти не встречается)
+    // Редкий случай: не все артефакты, но жизни ещё есть (страховка)
     scene.add.image(200, 350, 'epilog_udivlenie').setDisplaySize(400, 700);
     scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
     scene.add.text(200, 580, 'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?', {
@@ -687,7 +680,6 @@ function startPuzzle(location) {
         }
     }
 
-    // Убираем изначальные совпадения
     (function cleanUp() {
         var found = false;
         for (var r = 0; r < ROWS; r++) {
