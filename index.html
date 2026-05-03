@@ -21,7 +21,7 @@ var config = {
     width: 400,
     height: 700,
     backgroundColor: '#000000',
-    render: { roundPixels: true, antialias: true, pixelArt: false },
+    render: { roundPixels: true, antialias: false, pixelArt: true },
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -80,7 +80,7 @@ function preloadAssets() {
     this.load.image('prichal_puzzle', 'prichal_puzzle.png');
     this.load.image('za_rekoy_puzzle', 'za_rekoy_puzzle.png');
     this.load.image('novgorod_puzzle', 'novgorod_puzzle.png');
-    // Новые иконки 220x220
+    // Иконки 80×80 (пиксель-в-пиксель) — имена файлов оставлены старые, чтобы тебе не переименовывать
     this.load.image('bochki55', 'bochki_220.png');
     this.load.image('gusli55', 'gusli_220.png');
     this.load.image('kirpich55', 'kirpich_220.png');
@@ -105,7 +105,6 @@ function createGame() {
         bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
         bgMusic.play();
     }
-
     showPrologue.call(this);
 }
 
@@ -159,11 +158,9 @@ function showDialog(msg, portraitKey, showNextBtn) {
     
     if (portraitKey) {
         var portrait = scene.add.image(60, bgCenterY, portraitKey);
-        // Садко: 63x120 (родные пропорции 126x240)
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(63, 120);
         } else {
-            // Старец: 120x120
             portrait.setDisplaySize(120, 120);
         }
         dialogGroup.add(portrait);
@@ -377,7 +374,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80px с NEAREST -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 (имена файлов старые, размер новый) -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -437,9 +434,8 @@ function startPuzzle(location) {
             var x = startX + col * CELL_SIZE + CELL_SIZE / 2;
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
+            // Файл теперь 80×80, отображаем без масштабирования — идеальная чёткость
             icon.setDisplaySize(80, 80);
-            // Включаем NEAREST для каждой иконки — убирает мыло
-            icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
             icon.setInteractive();
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
@@ -622,8 +618,6 @@ function fillEmptySpaces(isInitial) {
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
                 icon.setDisplaySize(80, 80);
-                // Включаем NEAREST для каждой новой иконки
-                icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
                 icon.setInteractive();
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
