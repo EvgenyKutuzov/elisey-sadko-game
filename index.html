@@ -106,21 +106,6 @@ function createGame() {
         bgMusic.play();
     }
 
-    // Включаем сглаживание для иконок (убираем NEAREST, даём LINEAR + мипмапы)
-    var iconKeys = ['bochki55', 'gusli55', 'kirpich55', 'pero55', 'pisalo55'];
-    iconKeys.forEach(function(key) {
-        var tex = game.textures.get(key);
-        if (tex) {
-            tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
-            // Если есть поддержка мипмапов, включим для лучшего качества при сжатии
-            if (tex.source && tex.source[0] && tex.source[0].glTexture) {
-                var glTexture = tex.source[0].glTexture;
-                glTexture.minFilter = WebGLRenderingContext.LINEAR_MIPMAP_LINEAR;
-                glTexture.magFilter = WebGLRenderingContext.LINEAR;
-            }
-        }
-    });
-
     showPrologue.call(this);
 }
 
@@ -174,11 +159,11 @@ function showDialog(msg, portraitKey, showNextBtn) {
     
     if (portraitKey) {
         var portrait = scene.add.image(60, bgCenterY, portraitKey);
+        // Садко: 63x120 (родные пропорции 126x240)
         if (portraitKey === 'sadko') {
-            // Новый файл 260×416 → отображаем 75×120 для сохранения пропорций и увеличения высоты до 120
-            portrait.setDisplaySize(75, 120);
+            portrait.setDisplaySize(63, 120);
         } else {
-            // Старец 240×240 → 120×120
+            // Старец: 120x120
             portrait.setDisplaySize(120, 120);
         }
         dialogGroup.add(portrait);
@@ -317,7 +302,8 @@ function drawMap() {
     })();
     var htemp = this.add.text(0,0,hintText,{ fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
     var hw=htemp.width, hh=htemp.height; htemp.destroy();
-    var hintX = allCompleted ? 280 : 220;
+    // Финальная подсказка сдвинута левее, чтобы не перекрывать кнопку звука
+    var hintX = allCompleted ? 240 : 220;
     this.add.rectangle(hintX, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
     mapHintText = this.add.text(hintX, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
 }
@@ -391,7 +377,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + чёткие иконки 80x80 -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80px с NEAREST -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -452,6 +438,8 @@ function startPuzzle(location) {
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
             icon.setDisplaySize(80, 80);
+            // Включаем NEAREST для каждой иконки — убирает мыло
+            icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
             icon.setInteractive();
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
@@ -634,6 +622,8 @@ function fillEmptySpaces(isInitial) {
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
                 icon.setDisplaySize(80, 80);
+                // Включаем NEAREST для каждой новой иконки
+                icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
                 icon.setInteractive();
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
