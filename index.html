@@ -42,7 +42,9 @@ var playButton;
 var isMoving = false;
 var lastPlayerLoc = null;
 var mapHintText = null;
-var artifactCollected = { bochka: false, gusli: false, kamen: false, pero: false, pisalo: false };
+
+// Новая коллекция: три артефакта
+var artifactCollected = { uzelok: false, rakuska: false, krestik: false };
 
 var locations = [
     { name:'Причал',        x:160, y:510, unlocked:true,  completed:false, targetType:'bochki',  targetCount:10, icon:'prichal_icon',    puzzleBg:'prichal_puzzle', isReturn: false },
@@ -121,6 +123,11 @@ function preloadAssets() {
     this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
     this.load.image('particle_star', 'particle_star.png');
     this.load.audio('bgMusic', 'bg_music.mp3');
+
+    // Новые артефакты
+    this.load.image('uzelok_art', 'uzelok_art.png');
+    this.load.image('river_shell_art', 'river_shell_art.png');
+    this.load.image('krestik_art', 'krestik_art.png');
 }
 
 function createGame() {
@@ -194,10 +201,8 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
     }
     
     if (playButton && !showNextBtn) {
-        // показываем кнопку ИГРАТЬ с мягкой пульсацией
         playButton.setVisible(true);
         playButton.setPosition(200, 310);
-        // запускаем/перезапускаем твин
         if (playButton.customTween) {
             playButton.customTween.stop();
         }
@@ -224,7 +229,6 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
             backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
         
-        // мягкая пульсация для кнопки ДАЛЕЕ
         scene.tweens.add({
             targets: nextBtn,
             alpha: { from: 1, to: 0.65 },
@@ -352,9 +356,23 @@ function drawMap() {
 
     dialogGroup = null;
     playButton = this.add.text(200, 310, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
-    // На старте твин для кнопки ИГРАТЬ не запускаем, он будет включаться в showDialog
     playButton.customTween = null;
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
+
+    musicBtn = this.add.text(380, 10, musicOn ? '🔊' : '🔇', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
+    musicBtn.on('pointerdown', function(){
+        musicOn = !musicOn;
+        if (bgMusic) bgMusic.setVolume(musicOn ? 0.4 : 0);
+        musicBtn.setText(musicOn ? '🔊' : '🔇');
+    });
+
+    livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
+
+    // Рюкзачок воспоминаний (эмодзи 🎒) под жизнями
+    var memoryBtn = this.add.text(340, 80, '🎒', { fontSize:'24px' }).setOrigin(0.5,0).setInteractive();
+    memoryBtn.on('pointerdown', function(){
+        showMemories();
+    });
 
     if (allCompleted) {
         var dreamBtn = this.add.text(200, 670, '🌟 Проснуться 🌟', {
@@ -362,7 +380,6 @@ function drawMap() {
             backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
         
-        // мягкая пульсация для кнопки Проснуться
         this.tweens.add({
             targets: dreamBtn,
             alpha: { from: 1, to: 0.65 },
@@ -374,15 +391,6 @@ function drawMap() {
         
         dreamBtn.on('pointerdown', function(){ showEnding(); });
     }
-
-    musicBtn = this.add.text(380, 10, musicOn ? '🔊' : '🔇', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
-    musicBtn.on('pointerdown', function(){
-        musicOn = !musicOn;
-        if (bgMusic) bgMusic.setVolume(musicOn ? 0.4 : 0);
-        musicBtn.setText(musicOn ? '🔊' : '🔇');
-    });
-
-    livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
     var hintText = allCompleted ? 'Нажми «Проснуться»' : (function(){
         if (activeLocs.length === 1) {
@@ -445,25 +453,119 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
     }});
 }
 
-function showEnding() {
-    var allArtifacts = artifactCollected.bochka && artifactCollected.gusli && artifactCollected.kamen && artifactCollected.pero && artifactCollected.pisalo;
+function showMemories() {
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
+
+    scene.add.rectangle(200, 350, 400, 700, 0x1a1a2e, 0.95);
+
+    scene.add.text(200, 40, 'Воспоминания Елисея', {
+        fontSize: '22px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+        stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5);
+
+    var items = [
+        { collected: artifactCollected.uzelok, img: 'uzelok_art', label: 'Верёвочный узелок', hint: 'С причала' },
+        { collected: artifactCollected.rakuska, img: 'river_shell_art', label: 'Ракушка', hint: 'Из подводного царства' },
+        { collected: artifactCollected.krestik, img: 'krestik_art', label: 'Деревянный крестик', hint: 'Из храма Новгорода' }
+    ];
+
+    var startY = 150;
+    var stepY = 170;
+
+    items.forEach(function(item, index) {
+        var y = startY + index * stepY;
+        if (item.collected) {
+            scene.add.image(120, y, item.img).setDisplaySize(80, 80);
+            scene.add.text(210, y - 8, item.label, {
+                fontSize: '17px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
+                stroke: '#000000', strokeThickness: 3
+            });
+            scene.add.text(210, y + 16, item.hint, {
+                fontSize: '13px', fill: '#cccccc', fontFamily: 'Comfortaa, Arial',
+                stroke: '#000000', strokeThickness: 2
+            });
+        } else {
+            scene.add.text(120, y, '❓', { fontSize: '36px' }).setOrigin(0.5);
+            scene.add.text(210, y, '???', {
+                fontSize: '17px', fill: '#888888', fontFamily: 'Comfortaa, Arial',
+                stroke: '#000000', strokeThickness: 3
+            });
+        }
+    });
+
+    var backBtn = scene.add.text(200, 640, '← На карту', {
+        fontSize: '18px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+        backgroundColor: '#333333', padding: { x: 12, y: 6 }
+    }).setOrigin(0.5).setInteractive();
+
+    backBtn.on('pointerdown', function() {
+        drawMap.call(scene);
+    });
+}
+
+function showEnding() {
+    var allArtifacts = artifactCollected.uzelok && artifactCollected.rakuska && artifactCollected.krestik;
+    var scene = game.scene.scenes[0];
+    scene.children.removeAll(true);
+
+    // Плохая концовка (проигрыш всех жизней)
+    if (lives <= 0 && !allArtifacts) {
+        scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.85);
+        
+        scene.add.text(200, 40, 'Елисей проснулся...', {
+            fontSize: '20px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+            stroke: '#000000', strokeThickness: 4
+        }).setOrigin(0.5);
+
+        var collectedCount = (artifactCollected.uzelok ? 1 : 0) + (artifactCollected.rakuska ? 1 : 0) + (artifactCollected.krestik ? 1 : 0);
+        scene.add.text(200, 100, 'Ему запомнилось: ' + collectedCount + ' из 3', {
+            fontSize: '16px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
+            stroke: '#000000', strokeThickness: 3
+        }).setOrigin(0.5);
+
+        var items = [
+            { collected: artifactCollected.uzelok, x: 120, y: 200, img: 'uzelok_art' },
+            { collected: artifactCollected.rakuska, x: 200, y: 200, img: 'river_shell_art' },
+            { collected: artifactCollected.krestik, x: 280, y: 200, img: 'krestik_art' }
+        ];
+        items.forEach(function(item) {
+            if (item.collected) {
+                scene.add.image(item.x, item.y, item.img).setDisplaySize(60, 60);
+            } else {
+                scene.add.text(item.x, item.y, '❓', { fontSize: '30px' }).setOrigin(0.5);
+            }
+        });
+
+        scene.add.text(200, 300, 'Но сон был неполным…\nМожет быть, попробовать ещё раз\nи собрать всё, что приснилось?', {
+            fontSize: '15px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+            align: 'center', stroke: '#000000', strokeThickness: 3
+        }).setOrigin(0.5);
+
+        var restartBtn = scene.add.text(200, 400, '🔄 Начать заново', {
+            fontSize: '18px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+            backgroundColor: '#333333', padding: { x: 12, y: 6 }
+        }).setOrigin(0.5).setInteractive();
+        restartBtn.on('pointerdown', function() { location.reload(); });
+        return;
+    }
+
+    // Обычная концовка (без полной коллекции, но не из-за жизней)
     var bgKey = allArtifacts ? 'epilog' : 'epilog_udivlenie';
-    var bg = scene.add.image(200, 350, bgKey).setDisplaySize(400, 700);
+    scene.add.image(200, 350, bgKey).setDisplaySize(400, 700);
     if (!allArtifacts) scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
     var textContent = allArtifacts ?
         'Елисей открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…' :
         'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?';
-    var text = scene.add.text(200, 580, textContent, {
+    scene.add.text(200, 580, textContent, {
         fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#000000cc', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
     }).setOrigin(0.5);
     var restartBtn = scene.add.text(200, 660, '🔄 Начать заново', {
         fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
-        backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
+        backgroundColor:'#333333', padding:{x:12,y:6}
     }).setOrigin(0.5).setInteractive();
-    restartBtn.on('pointerdown', function(){ location.reload(); });
+    restartBtn.on('pointerdown', function() { location.reload(); });
 }
 
 function startPuzzle(location) {
@@ -535,8 +637,8 @@ function startPuzzle(location) {
         }
     }
 
-    var initialCleaned = false;
-    function cleanUp() {
+    // Убираем изначальные совпадения
+    (function cleanUp() {
         var found = false;
         for (var r = 0; r < ROWS; r++) {
             for (var c = 0; c < COLS - 2; c++) {
@@ -565,6 +667,7 @@ function startPuzzle(location) {
             }
         }
         if (found) {
+            // Сдвигаем вниз и заполняем пустоты
             for (var c = 0; c < COLS; c++) {
                 var emptyRow = ROWS - 1;
                 for (var r = ROWS - 1; r >= 0; r--) {
@@ -598,8 +701,7 @@ function startPuzzle(location) {
             }
             cleanUp();
         }
-    }
-    cleanUp();
+    })();
 
     scene.time.delayedCall(200, highlightTargets);
 
@@ -826,9 +928,10 @@ function fillEmptySpaces(isInitial) {
         puzzleActive = false;
         if (currentLocation) {
             currentLocation.completed = true;
-            if (currentLocation.name === 'Причал' && !locations[1].completed) artifactCollected.bochka = true;
-            else if (currentLocation.name === 'За рекой') { artifactCollected.gusli = true; locations[1].completed = true; }
-            else if (currentLocation.name === 'Великий Новгород') { artifactCollected.kamen = true; artifactCollected.pero = true; artifactCollected.pisalo = true; }
+            // Выдача артефактов
+            if (currentLocation.name === 'Причал' && !locations[1].completed) artifactCollected.uzelok = true;
+            else if (currentLocation.name === 'За рекой') { artifactCollected.rakuska = true; locations[1].completed = true; }
+            else if (currentLocation.name === 'Великий Новгород') { artifactCollected.krestik = true; }
             unlockNext(currentLocation);
             updatePlayerSprite(currentLocation);
             var factText = scene.add.text(200, 380, '✅ Миссия выполнена!', {
