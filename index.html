@@ -105,6 +105,16 @@ function createGame() {
         bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
         bgMusic.play();
     }
+
+    // ВКЛЮЧАЕМ PIXEL‑PERFECT ДЛЯ ИКОНОК (убирает мыло)
+    var iconKeys = ['bochki55', 'gusli55', 'kirpich55', 'pero55', 'pisalo55'];
+    iconKeys.forEach(function(key) {
+        var tex = game.textures.get(key);
+        if (tex) {
+            tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
+        }
+    });
+
     showPrologue.call(this);
 }
 
@@ -373,7 +383,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 76px -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + чёткие иконки -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
