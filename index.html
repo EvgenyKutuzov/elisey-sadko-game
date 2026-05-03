@@ -1,6 +1,3 @@
-Я всё исправил. Теперь мигание уменьшено до минимально заметного (scaleX: 1.00075), а маршруты возвращены к прямым линиям, как в самой первой версии. Вся кривая логика убрана, чтобы не портить впечатление от демо. Ниже полный финальный код — скопируй его в `index.html`.
-
-```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -79,7 +76,6 @@ var highlightFrames = [];
 var finalDialogShown = false;
 
 function preloadAssets() {
-    // Экран загрузки
     var progressBox = this.add.graphics();
     progressBox.fillStyle(0x222222, 0.8);
     progressBox.fillRect(80, 320, 240, 50);
@@ -272,7 +268,6 @@ function drawMap() {
             loc.labelBg = labelBg;
             loc.labelText = labelText;
 
-            // ✨ Минимальное «дыхание» (едва заметно)
             if (activeLocs.length === 1 && loc.unlocked && !loc.completed) {
                 self.tweens.add({
                     targets: icon,
@@ -376,7 +371,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
 
-    // Прямое перемещение без кривых
     scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
         isMoving = false;
         if (!location) return;
@@ -425,7 +419,6 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -479,7 +472,6 @@ function startPuzzle(location) {
         if (musicBtn) musicBtn.setText(musicOn ? '🔊' : '🔇');
     });
 
-    // Заполняем сетку
     for (var row = 0; row < ROWS; row++) {
         grid[row] = [];
         for (var col = 0; col < COLS; col++) {
@@ -496,7 +488,6 @@ function startPuzzle(location) {
         }
     }
 
-    // Мгновенная очистка начальных совпадений (без анимации)
     var initialCleaned = false;
     function cleanUp() {
         var found = false;
@@ -506,7 +497,6 @@ function startPuzzle(location) {
                 if (a && grid[r][c+1] && grid[r][c+2] &&
                     a.artifactType === grid[r][c+1].artifactType &&
                     a.artifactType === grid[r][c+2].artifactType) {
-                    // Удаляем эти три и помечаем на заполнение
                     grid[r][c].destroy(); grid[r][c] = null;
                     grid[r][c+1].destroy(); grid[r][c+1] = null;
                     grid[r][c+2].destroy(); grid[r][c+2] = null;
@@ -528,7 +518,6 @@ function startPuzzle(location) {
             }
         }
         if (found) {
-            // Заполняем пустоты (сдвигаем вниз и добавляем новые)
             for (var c = 0; c < COLS; c++) {
                 var emptyRow = ROWS - 1;
                 for (var r = ROWS - 1; r >= 0; r--) {
@@ -538,7 +527,6 @@ function startPuzzle(location) {
                             grid[r][c] = null;
                             grid[emptyRow][c].row = emptyRow;
                             grid[emptyRow][c].col = c;
-                            // Просто перемещаем мгновенно
                             grid[emptyRow][c].y = startY + emptyRow * CELL_SIZE + CELL_SIZE / 2;
                         }
                         emptyRow--;
@@ -561,12 +549,11 @@ function startPuzzle(location) {
                     }
                 }
             }
-            cleanUp(); // рекурсивно, пока не останется троек
+            cleanUp();
         }
     }
     cleanUp();
 
-    // Теперь можно подсветить и добавить кнопку назад
     scene.time.delayedCall(200, highlightTargets);
 
     var backBtn = scene.add.text(200, 660, 'Вернуться на карту', {
@@ -880,6 +867,3 @@ function loseLevel() {
 </script>
 </body>
 </html>
-```
-
-Теперь мигание минимально, маршруты прямы, загрузка показывается, а иконки в `match-3` не скачут. Загрузи этот код в репозиторий и проверь — должен быть доволен. 😊
