@@ -1,3 +1,6 @@
+Я всё исправил. Теперь мигание уменьшено до минимально заметного (scaleX: 1.00075), а маршруты возвращены к прямым линиям, как в самой первой версии. Вся кривая логика убрана, чтобы не портить впечатление от демо. Ниже полный финальный код — скопируй его в `index.html`.
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -74,19 +77,6 @@ var dragLocked = false;
 var firstMoveMade = false;
 var highlightFrames = [];
 var finalDialogShown = false;
-
-// ⚙️ Маршруты с твоими координатами
-const ROUTES = {
-    'prichal_to_za_rekoy': [
-        {x: 200, y: 520}, {x: 260, y: 350}, {x: 320, y: 200}, {x: 398, y: 205}, {x: 350, y: 130}
-    ],
-    'za_rekoy_to_prichal': [
-        {x: 320, y: 200}, {x: 260, y: 350}, {x: 200, y: 520}, {x: 398, y: 304}, {x: 160, y: 510}
-    ],
-    'prichal_to_novgorod': [
-        {x: 140, y: 490}, {x: 100, y: 320}, {x: 120, y: 180}, {x: 394, y: 456}
-    ]
-};
 
 function preloadAssets() {
     // Экран загрузки
@@ -286,8 +276,8 @@ function drawMap() {
             if (activeLocs.length === 1 && loc.unlocked && !loc.completed) {
                 self.tweens.add({
                     targets: icon,
-                    scaleX: 1.003,
-                    scaleY: 1.003,
+                    scaleX: 1.00075,
+                    scaleY: 1.00075,
                     duration: 1200,
                     yoyo: true,
                     repeat: -1
@@ -386,77 +376,32 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
 
-    var routeKey = '';
-    if (location && location.name === 'За рекой') routeKey = 'prichal_to_za_rekoy';
-    else if (location && location.name === 'Причал' && locations[1].completed) routeKey = 'za_rekoy_to_prichal';
-    else if (location && location.name === 'Великий Новгород') routeKey = 'prichal_to_novgorod';
+    // Прямое перемещение без кривых
+    scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
+        isMoving = false;
+        if (!location) return;
+        currentLocation = location;
 
-    if (routeKey && ROUTES[routeKey]) {
-        var points = ROUTES[routeKey];
-        var spline = new Phaser.Curves.Spline(points);
-        var follower = { t: 0 };
-        scene.tweens.add({
-            targets: follower,
-            t: 1,
-            duration: duration,
-            onUpdate: function() {
-                var p = spline.getPoint(follower.t);
-                playerContainer.x = p.x;
-                playerContainer.y = p.y;
-            },
-            onComplete: function() {
-                isMoving = false;
-                if (!location) return;
-                currentLocation = location;
+        if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
+            updatePlayerSprite({name:'Причал'});
+            lastPlayerLoc = {x: 160, y: 510};
+            showDialog('Елисей, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
+            if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
+            return;
+        }
 
-                if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
-                    updatePlayerSprite({name:'Причал'});
-                    lastPlayerLoc = {x: 160, y: 510};
-                    showDialog('Елисей, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
-                    if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
-                    return;
-                }
-
-                if (needsPuzzle) {
-                    if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
-                    var p = TYPES[location.targetType].plural;
-                    if (location.name === 'Причал' && !locations[0].completed) {
-                        showDialog('Елисей, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
-                    } else if (location.name === 'За рекой') {
-                        showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 8 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
-                    } else if (location.name === 'Великий Новгород') {
-                        showDialog('Помоги построить храм!\nСобери 15 камней.', 'sadko');
-                    }
-                }
+        if (needsPuzzle) {
+            if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
+            var p = TYPES[location.targetType].plural;
+            if (location.name === 'Причал' && !locations[0].completed) {
+                showDialog('Елисей, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
+            } else if (location.name === 'За рекой') {
+                showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 8 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
+            } else if (location.name === 'Великий Новгород') {
+                showDialog('Помоги построить храм!\nСобери 15 камней.', 'sadko');
             }
-        });
-    } else {
-        scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
-            isMoving = false;
-            if (!location) return;
-            currentLocation = location;
-
-            if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
-                updatePlayerSprite({name:'Причал'});
-                lastPlayerLoc = {x: 160, y: 510};
-                showDialog('Елисей, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
-                if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
-                return;
-            }
-
-            if (needsPuzzle) {
-                if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
-                var p = TYPES[location.targetType].plural;
-                if (location.name === 'Причал' && !locations[0].completed) {
-                    showDialog('Елисей, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
-                } else if (location.name === 'За рекой') {
-                    showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 8 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
-                } else if (location.name === 'Великий Новгород') {
-                    showDialog('Помоги построить храм!\nСобери 15 камней.', 'sadko');
-                }
-            }
-        }});
-    }
+        }
+    }});
 }
 
 function showEnding() {
@@ -842,7 +787,6 @@ function fillEmptySpaces(isInitial) {
         }
     }
     if (isInitial) {
-        // Быстрая повторная проверка без таймера
         checkMatches(true);
     } else if (collectedCount >= targetCount) {
         puzzleActive = false;
@@ -936,3 +880,6 @@ function loseLevel() {
 </script>
 </body>
 </html>
+```
+
+Теперь мигание минимально, маршруты прямы, загрузка показывается, а иконки в `match-3` не скачут. Загрузи этот код в репозиторий и проверь — должен быть доволен. 😊
