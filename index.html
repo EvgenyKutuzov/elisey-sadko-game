@@ -43,7 +43,6 @@ var isMoving = false;
 var lastPlayerLoc = null;
 var mapHintText = null;
 
-// Новая коллекция: три артефакта
 var artifactCollected = { uzelok: false, rakuska: false, krestik: false };
 
 var locations = [
@@ -124,7 +123,6 @@ function preloadAssets() {
     this.load.image('particle_star', 'particle_star.png');
     this.load.audio('bgMusic', 'bg_music.mp3');
 
-    // Новые артефакты
     this.load.image('uzelok_art', 'uzelok_art.png');
     this.load.image('river_shell_art', 'river_shell_art.png');
     this.load.image('krestik_art', 'krestik_art.png');
@@ -335,7 +333,7 @@ function drawMap() {
         lastPlayerLoc = {x: 50, y: 350};
         if (!finalDialogShown) {
             finalDialogShown = true;
-            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false, -50);
+            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал! Загляни в свой рюкзачок — там всё, что тебе приснилось…', 'sadko', false, -50);
         }
     }
 
@@ -368,13 +366,28 @@ function drawMap() {
 
     livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
-    // Рюкзачок воспоминаний (эмодзи 🎒) под жизнями
-    var memoryBtn = this.add.text(340, 80, '🎒', { fontSize:'24px' }).setOrigin(0.5,0).setInteractive();
+    // Рюкзачок строго под кнопкой звука и жизнями
+    var memoryBtn = this.add.text(380, 80, '🎒', { fontSize:'24px' }).setOrigin(1,0).setInteractive();
     memoryBtn.on('pointerdown', function(){
+        if (isMoving || puzzleActive) return;
         showMemories();
     });
 
+    // В финале – мягкая пульсация рюкзачка и подсказка
     if (allCompleted) {
+        this.tweens.add({
+            targets: memoryBtn,
+            alpha: { from: 1, to: 0.65 },
+            duration: 800,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        this.add.text(380, 108, 'Воспоминания', {
+            fontSize: '9px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial',
+            stroke: '#000000', strokeThickness: 2
+        }).setOrigin(1,0);
+
         var dreamBtn = this.add.text(200, 670, '🌟 Проснуться 🌟', {
             fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
@@ -454,6 +467,7 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
 }
 
 function showMemories() {
+    if (isMoving) return;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
 
@@ -470,26 +484,27 @@ function showMemories() {
         { collected: artifactCollected.krestik, img: 'krestik_art', label: 'Деревянный крестик', hint: 'Из храма Новгорода' }
     ];
 
-    var startY = 150;
-    var stepY = 170;
+    var startY = 160;
+    var stepY = 160;
 
     items.forEach(function(item, index) {
         var y = startY + index * stepY;
         if (item.collected) {
-            scene.add.image(120, y, item.img).setDisplaySize(80, 80);
-            scene.add.text(210, y - 8, item.label, {
-                fontSize: '17px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
+            scene.add.image(100, y, item.img).setDisplaySize(80, 80);
+            scene.add.text(200, y - 8, item.label, {
+                fontSize: '16px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
                 stroke: '#000000', strokeThickness: 3
             });
-            scene.add.text(210, y + 16, item.hint, {
-                fontSize: '13px', fill: '#cccccc', fontFamily: 'Comfortaa, Arial',
+            scene.add.text(200, y + 16, item.hint, {
+                fontSize: '12px', fill: '#cccccc', fontFamily: 'Comfortaa, Arial',
                 stroke: '#000000', strokeThickness: 2
             });
         } else {
-            scene.add.text(120, y, '❓', { fontSize: '36px' }).setOrigin(0.5);
-            scene.add.text(210, y, '???', {
-                fontSize: '17px', fill: '#888888', fontFamily: 'Comfortaa, Arial',
-                stroke: '#000000', strokeThickness: 3
+            // Полупрозрачный силуэт + «забыто»
+            var silhouette = scene.add.image(100, y, item.img).setDisplaySize(80, 80).setAlpha(0.2);
+            scene.add.text(200, y - 4, 'забыто', {
+                fontSize: '14px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
+                stroke: '#000000', strokeThickness: 2
             });
         }
     });
@@ -519,25 +534,30 @@ function showEnding() {
         }).setOrigin(0.5);
 
         var collectedCount = (artifactCollected.uzelok ? 1 : 0) + (artifactCollected.rakuska ? 1 : 0) + (artifactCollected.krestik ? 1 : 0);
-        scene.add.text(200, 100, 'Ему запомнилось: ' + collectedCount + ' из 3', {
+        scene.add.text(200, 90, 'Ему запомнилось: ' + collectedCount + ' из 3', {
             fontSize: '16px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
             stroke: '#000000', strokeThickness: 3
         }).setOrigin(0.5);
 
         var items = [
-            { collected: artifactCollected.uzelok, x: 120, y: 200, img: 'uzelok_art' },
-            { collected: artifactCollected.rakuska, x: 200, y: 200, img: 'river_shell_art' },
-            { collected: artifactCollected.krestik, x: 280, y: 200, img: 'krestik_art' }
+            { collected: artifactCollected.uzelok, x: 120, y: 180, img: 'uzelok_art' },
+            { collected: artifactCollected.rakuska, x: 200, y: 180, img: 'river_shell_art' },
+            { collected: artifactCollected.krestik, x: 280, y: 180, img: 'krestik_art' }
         ];
         items.forEach(function(item) {
             if (item.collected) {
                 scene.add.image(item.x, item.y, item.img).setDisplaySize(60, 60);
             } else {
-                scene.add.text(item.x, item.y, '❓', { fontSize: '30px' }).setOrigin(0.5);
+                // Полупрозрачный силуэт и слово «забыто» снизу
+                var sil = scene.add.image(item.x, item.y, item.img).setDisplaySize(60, 60).setAlpha(0.25);
+                scene.add.text(item.x, item.y + 35, 'забыто', {
+                    fontSize: '10px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
+                    stroke: '#000000', strokeThickness: 2
+                }).setOrigin(0.5);
             }
         });
 
-        scene.add.text(200, 300, 'Но сон был неполным…\nМожет быть, попробовать ещё раз\nи собрать всё, что приснилось?', {
+        scene.add.text(200, 290, 'Но сон был неполным…\nМожет быть, попробовать ещё раз\nи собрать всё, что приснилось?', {
             fontSize: '15px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
             align: 'center', stroke: '#000000', strokeThickness: 3
         }).setOrigin(0.5);
@@ -550,14 +570,44 @@ function showEnding() {
         return;
     }
 
-    // Обычная концовка (без полной коллекции, но не из-за жизней)
-    var bgKey = allArtifacts ? 'epilog' : 'epilog_udivlenie';
-    scene.add.image(200, 350, bgKey).setDisplaySize(400, 700);
-    if (!allArtifacts) scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
-    var textContent = allArtifacts ?
-        'Елисей открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…' :
-        'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?';
-    scene.add.text(200, 580, textContent, {
+    // Хорошая концовка (все артефакты собраны)
+    if (allArtifacts) {
+        scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.9);
+        scene.add.text(200, 40, 'Все три предмета из сна остались с ним', {
+            fontSize: '16px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+            stroke: '#000000', strokeThickness: 4, align: 'center'
+        }).setOrigin(0.5);
+
+        var artImgs = ['uzelok_art', 'river_shell_art', 'krestik_art'];
+        var artNames = ['Верёвочный узелок', 'Ракушка', 'Деревянный крестик'];
+        for (var i = 0; i < 3; i++) {
+            scene.add.image(100 + i * 100, 160, artImgs[i]).setDisplaySize(80, 80);
+            scene.add.text(100 + i * 100, 220, artNames[i], {
+                fontSize: '10px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
+                stroke: '#000000', strokeThickness: 2, align: 'center'
+            }).setOrigin(0.5);
+        }
+
+        scene.time.delayedCall(2800, function() {
+            scene.children.removeAll(true);
+            scene.add.image(200, 350, 'epilog').setDisplaySize(400, 700);
+            scene.add.text(200, 580, 'Елисей открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…', {
+                fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+                backgroundColor:'#000000cc', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
+            }).setOrigin(0.5);
+            var restartBtn = scene.add.text(200, 660, '🔄 Начать заново', {
+                fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+                backgroundColor:'#333333', padding:{x:12,y:6}
+            }).setOrigin(0.5).setInteractive();
+            restartBtn.on('pointerdown', function() { location.reload(); });
+        });
+        return;
+    }
+
+    // Редкий случай: не все артефакты, но жизни ещё есть (технически почти не встречается)
+    scene.add.image(200, 350, 'epilog_udivlenie').setDisplaySize(400, 700);
+    scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
+    scene.add.text(200, 580, 'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?', {
         fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#000000cc', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
     }).setOrigin(0.5);
@@ -667,7 +717,6 @@ function startPuzzle(location) {
             }
         }
         if (found) {
-            // Сдвигаем вниз и заполняем пустоты
             for (var c = 0; c < COLS; c++) {
                 var emptyRow = ROWS - 1;
                 for (var r = ROWS - 1; r >= 0; r--) {
@@ -928,7 +977,6 @@ function fillEmptySpaces(isInitial) {
         puzzleActive = false;
         if (currentLocation) {
             currentLocation.completed = true;
-            // Выдача артефактов
             if (currentLocation.name === 'Причал' && !locations[1].completed) artifactCollected.uzelok = true;
             else if (currentLocation.name === 'За рекой') { artifactCollected.rakuska = true; locations[1].completed = true; }
             else if (currentLocation.name === 'Великий Новгород') { artifactCollected.krestik = true; }
