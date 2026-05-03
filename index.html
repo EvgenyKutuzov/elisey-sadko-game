@@ -2,8 +2,8 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta property="og:title" content="Сон о Садко — игра мальчика Жени">
-    <meta property="og:description" content="Детская HTML5-игра по мотивам былины о Садко. Мальчик Женя засыпает с книгой и попадает в мир Древнего Новгорода.">
+    <meta property="og:title" content="Сон о Садко — игра мальчика Елисея">
+    <meta property="og:description" content="Детская HTML5-игра по мотивам былины о Садко. Мальчик Елисей засыпает с книгой и попадает в мир Древнего Новгорода.">
     <meta property="og:image" content="https://evgenykutuzov.github.io/zhenya-sadko-game/novgorod_map_start.png">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
@@ -72,9 +72,7 @@ var dragPointerStartX=0, dragPointerStartY=0;
 var dragLocked = false;
 
 var firstMoveMade = false;
-// Массив для хранения золотых рамок подсветки
 var highlightFrames = [];
-// Флаг, чтобы финальный диалог показывался только один раз
 var finalDialogShown = false;
 
 function preloadAssets() {
@@ -86,22 +84,21 @@ function preloadAssets() {
     this.load.image('prichal_puzzle', 'prichal_puzzle.png');
     this.load.image('za_rekoy_puzzle', 'za_rekoy_puzzle.png');
     this.load.image('novgorod_puzzle', 'novgorod_puzzle.png');
-    // Иконки 80×80 — имена файлов старые
     this.load.image('bochki55', 'bochki_220.png');
     this.load.image('gusli55', 'gusli_220.png');
     this.load.image('kirpich55', 'kirpich_220.png');
     this.load.image('pero55', 'pero_220.png');
     this.load.image('pisalo55', 'pisalo_220.png');
-    // Персонажи
     this.load.image('zhenya', 'zhenya.png');
     this.load.image('zhenya_boat', 'zhenya_boat.png');
     this.load.image('zhenya_sadko_boat', 'zhenya_sadko_boat.png');
     this.load.image('starets', 'starets.png');
     this.load.image('sadko', 'sadko.png');
-    // Пролог и эпилог
     this.load.image('prolog', 'prolog_zasypanie.png');
     this.load.image('epilog', 'epilog_prosypanie.png');
     this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
+    // Звёздочка для частиц
+    this.load.image('particle_star', 'particle_star.png');
     this.load.audio('bgMusic', 'bg_music.mp3');
 }
 
@@ -118,7 +115,7 @@ function showPrologue() {
     var scene = this;
     scene.children.removeAll(true);
     var bg = scene.add.image(200, 350, 'prolog').setDisplaySize(400, 700);
-    var text = scene.add.text(200, 600, 'Женя заснул с книжкой былин...\nЕму снится Древний Новгород.\n\n[Нажми, чтобы продолжить]', {
+    var text = scene.add.text(200, 600, 'Елисей заснул с книжкой былин...\nЕму снится Древний Новгород.\n\n[Нажми, чтобы продолжить]', {
         fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#000000aa', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
     }).setOrigin(0.5);
@@ -259,10 +256,9 @@ function drawMap() {
 
     if (allCompleted) {
         lastPlayerLoc = {x: 50, y: 350};
-        // Финальный диалог с Садко (показывается только один раз)
         if (!finalDialogShown) {
             finalDialogShown = true;
-            showDialog('Вот и построен храм, Женя! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false);
+            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false);
         }
     }
 
@@ -344,7 +340,7 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
             updatePlayerSprite({name:'Причал'});
             lastPlayerLoc = {x: 160, y: 510};
-            showDialog('Женя, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
+            showDialog('Елисей, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
             if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
             return;
         }
@@ -353,7 +349,7 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
             if (mapHintText) mapHintText.setText('Нажми на кнопку ИГРАТЬ');
             var p = TYPES[location.targetType].plural;
             if (location.name === 'Причал' && !locations[0].completed) {
-                showDialog('Женя, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
+                showDialog('Елисей, слушай меня! Торговец Садко попал в беду в заречье — его душит Морской царь.\nСобери 10 бочек для экспедиции, чтобы снарядить ладью и успеть до шторма!', 'starets');
             } else if (location.name === 'За рекой') {
                 showDialog('Видишь, Морской царь безумно пляшет, а Садко вынужден играть, и от этого гибнут корабли!\nВырви 8 струн и колков из гуслей — уничтожь инструмент, чтобы спасти Садко!', 'starets');
             } else if (location.name === 'Великий Новгород') {
@@ -371,8 +367,8 @@ function showEnding() {
     var bg = scene.add.image(200, 350, bgKey).setDisplaySize(400, 700);
     if (!allArtifacts) scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
     var textContent = allArtifacts ?
-        'Женя открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…' :
-        'Женя вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?';
+        'Елисей открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…' :
+        'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?';
     var text = scene.add.text(200, 580, textContent, {
         fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#000000cc', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
@@ -384,7 +380,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + золотая обводка -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 + золотая обводка + частицы -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -454,10 +450,8 @@ function startPuzzle(location) {
         }
     }
 
-    // Автоочистка стартовых совпадений (без анимации), после неё – подсветка
     scene.time.delayedCall(300, function(){
         checkMatches(true);
-        // Подсвечиваем только когда все случайные совпадения убраны
         scene.time.delayedCall(200, highlightTargets);
     });
 
@@ -630,6 +624,17 @@ function removeMatches(matches) {
             collectedCount++;
             var tp = TYPES[targetType].plural;
             scoreText.setText('Собрано ' + tp + ': ' + collectedCount + ' / ' + targetCount);
+
+            // Волшебные звёздочки при сборе
+            var emitter = scene.add.particles(icon.x, icon.y, 'particle_star', {
+                speed: { min: -120, max: 120 },
+                angle: { min: 0, max: 360 },
+                scale: { start: 0.6, end: 0 },
+                lifespan: 500,
+                quantity: 8,
+                emitting: false
+            });
+            emitter.explode();
         }
         scene.tweens.add({ targets: icon, scaleX:0, scaleY:0, alpha:0, duration:200, onComplete: function(){ icon.destroy(); } });
         grid[icon.row][icon.col] = null;
@@ -669,7 +674,6 @@ function fillEmptySpaces(isInitial) {
         }
     }
     if (isInitial) {
-        // После мгновенной сборки проверяем ещё раз (без анимации)
         scene.time.delayedCall(100, function(){ checkMatches(true); });
     } else if (collectedCount >= targetCount) {
         puzzleActive = false;
