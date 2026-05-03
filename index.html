@@ -75,20 +75,43 @@ var firstMoveMade = false;
 var highlightFrames = [];
 var finalDialogShown = false;
 
-// Маршруты со скорректированными координатами для обхода воды
+// ⚙️ Маршруты с твоими координатами
 const ROUTES = {
     'prichal_to_za_rekoy': [
-        {x: 200, y: 520}, {x: 260, y: 350}, {x: 320, y: 200}, {x: 350, y: 130}
+        {x: 200, y: 520}, {x: 260, y: 350}, {x: 320, y: 200}, {x: 398, y: 205}, {x: 350, y: 130}
     ],
     'za_rekoy_to_prichal': [
-        {x: 320, y: 200}, {x: 260, y: 350}, {x: 200, y: 520}, {x: 160, y: 510}
+        {x: 320, y: 200}, {x: 260, y: 350}, {x: 200, y: 520}, {x: 398, y: 304}, {x: 160, y: 510}
     ],
     'prichal_to_novgorod': [
-        {x: 140, y: 490}, {x: 100, y: 320}, {x: 120, y: 180}
+        {x: 140, y: 490}, {x: 100, y: 320}, {x: 120, y: 180}, {x: 394, y: 456}
     ]
 };
 
 function preloadAssets() {
+    // Экран загрузки
+    var progressBox = this.add.graphics();
+    progressBox.fillStyle(0x222222, 0.8);
+    progressBox.fillRect(80, 320, 240, 50);
+    
+    var loadingText = this.add.text(200, 300, 'Загрузка...', {
+        fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial'
+    }).setOrigin(0.5);
+    
+    var progressBar = this.add.graphics();
+    
+    this.load.on('progress', function (value) {
+        progressBar.clear();
+        progressBar.fillStyle(0x87CEEB, 1);
+        progressBar.fillRect(90, 330, 220 * value, 30);
+    });
+    
+    this.load.on('complete', function () {
+        progressBar.destroy();
+        progressBox.destroy();
+        loadingText.destroy();
+    });
+    
     this.load.image('mapBG_start', 'novgorod_map_start.png');
     this.load.image('mapBG_final', 'novgorod_map_final.png');
     this.load.image('prichal_icon', 'prichal_icon.png');
@@ -259,13 +282,13 @@ function drawMap() {
             loc.labelBg = labelBg;
             loc.labelText = labelText;
 
-            // ✨ Минимальное мигание (1%)
+            // ✨ Минимальное «дыхание» (едва заметно)
             if (activeLocs.length === 1 && loc.unlocked && !loc.completed) {
                 self.tweens.add({
                     targets: icon,
-                    scaleX: 1.01,
-                    scaleY: 1.01,
-                    duration: 800,
+                    scaleX: 1.003,
+                    scaleY: 1.003,
+                    duration: 1200,
                     yoyo: true,
                     repeat: -1
                 });
@@ -275,7 +298,6 @@ function drawMap() {
                 if (isMoving || puzzleActive) return;
                 if (loc.completed) return;
                 if (lives <= 0 && !loc.isReturn) { showDialog('Нет жизней!'); return; }
-                // Останавливаем пульсацию перед движением
                 var localTweens = self.tweens.getTweensOf(icon);
                 for (var i = 0; i < localTweens.length; i++) {
                     localTweens[i].stop();
@@ -364,7 +386,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
     }
 
-    // Используем плавные маршруты (сплайны)
     var routeKey = '';
     if (location && location.name === 'За рекой') routeKey = 'prichal_to_za_rekoy';
     else if (location && location.name === 'Причал' && locations[1].completed) routeKey = 'za_rekoy_to_prichal';
@@ -410,7 +431,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
             }
         });
     } else {
-        // Запасной прямой путь
         scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
             isMoving = false;
             if (!location) return;
@@ -460,7 +480,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + иконки 80×80 -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -514,6 +534,7 @@ function startPuzzle(location) {
         if (musicBtn) musicBtn.setText(musicOn ? '🔊' : '🔇');
     });
 
+    // Заполняем сетку
     for (var row = 0; row < ROWS; row++) {
         grid[row] = [];
         for (var col = 0; col < COLS; col++) {
@@ -530,10 +551,78 @@ function startPuzzle(location) {
         }
     }
 
-    scene.time.delayedCall(300, function(){
-        checkMatches(true);
-        scene.time.delayedCall(200, highlightTargets);
-    });
+    // Мгновенная очистка начальных совпадений (без анимации)
+    var initialCleaned = false;
+    function cleanUp() {
+        var found = false;
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS - 2; c++) {
+                var a = grid[r][c];
+                if (a && grid[r][c+1] && grid[r][c+2] &&
+                    a.artifactType === grid[r][c+1].artifactType &&
+                    a.artifactType === grid[r][c+2].artifactType) {
+                    // Удаляем эти три и помечаем на заполнение
+                    grid[r][c].destroy(); grid[r][c] = null;
+                    grid[r][c+1].destroy(); grid[r][c+1] = null;
+                    grid[r][c+2].destroy(); grid[r][c+2] = null;
+                    found = true;
+                }
+            }
+        }
+        for (var c = 0; c < COLS; c++) {
+            for (var r = 0; r < ROWS - 2; r++) {
+                var a = grid[r][c];
+                if (a && grid[r+1][c] && grid[r+2][c] &&
+                    a.artifactType === grid[r+1][c].artifactType &&
+                    a.artifactType === grid[r+2][c].artifactType) {
+                    grid[r][c].destroy(); grid[r][c] = null;
+                    grid[r+1][c].destroy(); grid[r+1][c] = null;
+                    grid[r+2][c].destroy(); grid[r+2][c] = null;
+                    found = true;
+                }
+            }
+        }
+        if (found) {
+            // Заполняем пустоты (сдвигаем вниз и добавляем новые)
+            for (var c = 0; c < COLS; c++) {
+                var emptyRow = ROWS - 1;
+                for (var r = ROWS - 1; r >= 0; r--) {
+                    if (grid[r][c] !== null) {
+                        if (r !== emptyRow) {
+                            grid[emptyRow][c] = grid[r][c];
+                            grid[r][c] = null;
+                            grid[emptyRow][c].row = emptyRow;
+                            grid[emptyRow][c].col = c;
+                            // Просто перемещаем мгновенно
+                            grid[emptyRow][c].y = startY + emptyRow * CELL_SIZE + CELL_SIZE / 2;
+                        }
+                        emptyRow--;
+                    }
+                }
+            }
+            for (var c = 0; c < COLS; c++) {
+                for (var r = 0; r < ROWS; r++) {
+                    if (grid[r][c] === null) {
+                        var typeKey = TYPE_KEYS[Math.floor(Math.random() * TYPE_KEYS.length)];
+                        var x = startX + c * CELL_SIZE + CELL_SIZE / 2;
+                        var y = startY + r * CELL_SIZE + CELL_SIZE / 2;
+                        var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
+                        icon.setDisplaySize(80, 80);
+                        icon.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+                        icon.setInteractive();
+                        icon.row = r; icon.col = c; icon.artifactType = typeKey;
+                        icon.on('pointerdown', onDragStart);
+                        grid[r][c] = icon;
+                    }
+                }
+            }
+            cleanUp(); // рекурсивно, пока не останется троек
+        }
+    }
+    cleanUp();
+
+    // Теперь можно подсветить и добавить кнопку назад
+    scene.time.delayedCall(200, highlightTargets);
 
     var backBtn = scene.add.text(200, 660, 'Вернуться на карту', {
         fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
@@ -753,7 +842,8 @@ function fillEmptySpaces(isInitial) {
         }
     }
     if (isInitial) {
-        scene.time.delayedCall(100, function(){ checkMatches(true); });
+        // Быстрая повторная проверка без таймера
+        checkMatches(true);
     } else if (collectedCount >= targetCount) {
         puzzleActive = false;
         if (currentLocation) {
