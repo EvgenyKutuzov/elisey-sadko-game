@@ -106,7 +106,6 @@ function preloadAssets() {
     this.load.image('epilog_udivlenie', 'epilog_udivlenie.png');
     this.load.image('particle_star', 'particle_star.png');
     this.load.audio('bgMusic', 'bg_music.mp3');
-    // 🔈 Загружаем звуки
     this.load.audio('sfxSwipe', 'sfx_swipe.mp3');
     this.load.audio('sfxMatch', 'sfx_match.mp3');
     this.load.audio('sfxWin', 'sfx_win.mp3');
@@ -120,12 +119,11 @@ function createGame() {
         bgMusic = this.sound.add('bgMusic', { loop: true, volume: 0.4 });
         bgMusic.play();
     }
-    // Инициализируем звуки с ограничением громкости
-    sfxSwipe = this.sound.add('sfxSwipe', { volume: 0.5 });
-    sfxMatch = this.sound.add('sfxMatch', { volume: 0.5 });
-    sfxWin   = this.sound.add('sfxWin',   { volume: 0.6 });
-    sfxLose  = this.sound.add('sfxLose',  { volume: 0.6 });
-    sfxWater = this.sound.add('sfxWater', { volume: 0.5 });
+    sfxSwipe = this.sound.add('sfxSwipe', { volume: 0.4 });
+    sfxMatch = this.sound.add('sfxMatch', { volume: 0.4 });
+    sfxWin   = this.sound.add('sfxWin',   { volume: 0.5 });
+    sfxLose  = this.sound.add('sfxLose',  { volume: 0.5 });
+    sfxWater = this.sound.add('sfxWater', { volume: 0.4 });
 
     showPrologue.call(this);
 }
@@ -143,7 +141,6 @@ function showPrologue() {
     });
 }
 
-// Добавлен параметр offsetY для поднятия/опускания диалога
 function showDialog(msg, portraitKey, showNextBtn, offsetY) {
     var scene = game.scene.scenes[0];
     if (dialogGroup) {
@@ -182,7 +179,8 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
     dialogGroup.add(dialogText);
     
     if (portraitKey) {
-        var portraitX = (portraitKey === 'sadko') ? 80 : 50; // Старец сдвинут левее
+        // Портрет Старца сдвинут правее, Садко остаётся на прежнем месте
+        var portraitX = (portraitKey === 'sadko') ? 80 : 70;
         var portrait = scene.add.image(portraitX, bgCenterY, portraitKey);
         if (portraitKey === 'sadko') {
             portrait.setDisplaySize(95, 180);
@@ -267,13 +265,13 @@ function drawMap() {
             loc.labelBg = labelBg;
             loc.labelText = labelText;
 
-            // ✨ Пульсация для активной одиночной иконки
+            // ✨ Лёгкая пульсация только для единственной активной локации
             if (activeLocs.length === 1 && loc.unlocked && !loc.completed) {
                 self.tweens.add({
                     targets: icon,
-                    scaleX: 1.1,
-                    scaleY: 1.1,
-                    duration: 600,
+                    scaleX: 1.03,
+                    scaleY: 1.03,
+                    duration: 800,
                     yoyo: true,
                     repeat: -1
                 });
@@ -283,6 +281,11 @@ function drawMap() {
                 if (isMoving || puzzleActive) return;
                 if (loc.completed) return;
                 if (lives <= 0 && !loc.isReturn) { showDialog('Нет жизней!'); return; }
+                // Останавливаем пульсацию перед движением
+                var localTweens = self.tweens.getTweensOf(icon);
+                for (var i = 0; i < localTweens.length; i++) {
+                    localTweens[i].stop();
+                }
                 var needsPuzzle = !loc.completed && !loc.isReturn;
                 movePlayerTo(loc.x, loc.y, loc, needsPuzzle);
             });
@@ -293,7 +296,6 @@ function drawMap() {
         lastPlayerLoc = {x: 50, y: 350};
         if (!finalDialogShown) {
             finalDialogShown = true;
-            // Финальный диалог поднят выше
             showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false, -50);
         }
     }
@@ -362,18 +364,21 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
 
     var scene = game.scene.scenes[0];
     var duration = 800;
+    // 🔊 Звук воды только для реальных водных маршрутов (Причал ↔ За рекой), исключая пеший путь к Новгороду
+    var isWaterRoute = false;
     if (location) {
-        if (location.name === 'За рекой') duration = 2000;
-        else if (location.name === 'Причал' && locations[1].completed) duration = 2000;
-        else if (location.name === 'Великий Новгород' && locations[1].completed) duration = 2000;
+        if (location.name === 'За рекой') {
+            duration = 2000;
+            isWaterRoute = true;
+        } else if (location.name === 'Причал' && locations[1].completed) {
+            duration = 2000;
+            isWaterRoute = true;
+        } else if (location.name === 'Великий Новгород' && locations[1].completed) {
+            duration = 2000; // пешком, но длительность оставим для плавности, вода не играет
+        }
     }
-
-    // 🔊 Плеск воды при плавании
-    if (duration > 1500 && sfxWater) {
+    if (isWaterRoute && sfxWater && !sfxWater.isPlaying) {
         sfxWater.play();
-        scene.time.delayedCall(3000, function() {
-            if (sfxWater.isPlaying) sfxWater.stop();
-        });
     }
 
     scene.tweens.add({ targets:playerContainer, x:tx, y:ty, duration:duration, ease:'Power2', onComplete:function(){
@@ -596,7 +601,7 @@ function onDragEnd(pointer) {
                 document.body.style.overflow = 'auto';
                 dragLocked = true;
 
-                // 🔊 Звук свайпа (без наложений)
+                // 🔊 Звук свайпа
                 if (sfxSwipe && !sfxSwipe.isPlaying) {
                     sfxSwipe.play();
                 }
@@ -674,7 +679,7 @@ function removeMatches(matches) {
             var tp = TYPES[targetType].plural;
             scoreText.setText('Собрано ' + tp + ': ' + collectedCount + ' / ' + targetCount);
 
-            // Волшебные звёздочки при сборе
+            // Волшебные звёздочки
             var emitter = scene.add.particles(icon.x, icon.y, 'particle_star', {
                 speed: { min: -120, max: 120 },
                 angle: { min: 0, max: 360 },
@@ -685,7 +690,7 @@ function removeMatches(matches) {
             });
             emitter.explode();
 
-            // 🔊 Звук сбора комбинации
+            // 🔊 Звук сбора
             if (sfxMatch && !sfxMatch.isPlaying) {
                 sfxMatch.play();
             }
@@ -732,12 +737,8 @@ function fillEmptySpaces(isInitial) {
     } else if (collectedCount >= targetCount) {
         puzzleActive = false;
         // 🔊 Фанфары победы
-        if (sfxWin) {
+        if (sfxWin && !sfxWin.isPlaying) {
             sfxWin.play();
-            // Обрезаем длинные фанфары
-            scene.time.delayedCall(3000, function() {
-                if (sfxWin.isPlaying) sfxWin.stop();
-            });
         }
         if (currentLocation) {
             currentLocation.completed = true;
@@ -810,7 +811,7 @@ function loseLevel() {
     if (lives < 0) lives = 0;
     if (livesText) livesText.setText('❤️ x '+lives);
     // 🔊 Звук поражения
-    if (sfxLose) sfxLose.play();
+    if (sfxLose && !sfxLose.isPlaying) sfxLose.play();
     if (lives <= 0) {
         showEnding();
         return;
