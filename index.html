@@ -53,7 +53,7 @@ var currentLocation = null;
 var livesText, lives=5, maxLives=5;
 
 var puzzleActive = false;
-var ROWS=5, COLS=5, CELL_SIZE=76;
+var ROWS=5, COLS=5, CELL_SIZE=80;
 var TYPES = {
     bochki:  { name:'Бочки',   img:'bochki55',   plural:'бочек' },
     gusli:   { name:'Струны и колки', img:'gusli55',    plural:'струн и колков' },
@@ -106,12 +106,18 @@ function createGame() {
         bgMusic.play();
     }
 
-    // ВКЛЮЧАЕМ PIXEL‑PERFECT ДЛЯ ИКОНОК (убирает мыло)
+    // Включаем сглаживание для иконок (убираем NEAREST, даём LINEAR + мипмапы)
     var iconKeys = ['bochki55', 'gusli55', 'kirpich55', 'pero55', 'pisalo55'];
     iconKeys.forEach(function(key) {
         var tex = game.textures.get(key);
         if (tex) {
-            tex.setFilter(Phaser.Textures.FilterMode.NEAREST);
+            tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+            // Если есть поддержка мипмапов, включим для лучшего качества при сжатии
+            if (tex.source && tex.source[0] && tex.source[0].glTexture) {
+                var glTexture = tex.source[0].glTexture;
+                glTexture.minFilter = WebGLRenderingContext.LINEAR_MIPMAP_LINEAR;
+                glTexture.magFilter = WebGLRenderingContext.LINEAR;
+            }
         }
     });
 
@@ -169,8 +175,10 @@ function showDialog(msg, portraitKey, showNextBtn) {
     if (portraitKey) {
         var portrait = scene.add.image(60, bgCenterY, portraitKey);
         if (portraitKey === 'sadko') {
-            portrait.setDisplaySize(63, 120);
+            // Новый файл 260×416 → отображаем 75×120 для сохранения пропорций и увеличения высоты до 120
+            portrait.setDisplaySize(75, 120);
         } else {
+            // Старец 240×240 → 120×120
             portrait.setDisplaySize(120, 120);
         }
         dialogGroup.add(portrait);
@@ -383,7 +391,7 @@ function showEnding() {
     restartBtn.on('pointerdown', function(){ location.reload(); });
 }
 
-// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + чёткие иконки -----
+// ----- ГЕЙМПЛЕЙ (match-3) – 5x5 + чёткие иконки 80x80 -----
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
@@ -443,7 +451,7 @@ function startPuzzle(location) {
             var x = startX + col * CELL_SIZE + CELL_SIZE / 2;
             var y = startY + row * CELL_SIZE + CELL_SIZE / 2;
             var icon = scene.add.image(x, y, TYPES[typeKey].img);
-            icon.setDisplaySize(76, 76);
+            icon.setDisplaySize(80, 80);
             icon.setInteractive();
             icon.row = row; icon.col = col; icon.artifactType = typeKey;
             icon.on('pointerdown', onDragStart);
@@ -625,7 +633,7 @@ function fillEmptySpaces(isInitial) {
                 var typeKey = TYPE_KEYS[Math.floor(Math.random() * TYPE_KEYS.length)];
                 var x = sx + c * CELL_SIZE + CELL_SIZE/2, y = sy + r * CELL_SIZE + CELL_SIZE/2;
                 var icon = scene.add.image(Math.round(x), Math.round(y), TYPES[typeKey].img);
-                icon.setDisplaySize(76, 76);
+                icon.setDisplaySize(80, 80);
                 icon.setInteractive();
                 icon.row = r; icon.col = c; icon.artifactType = typeKey;
                 icon.on('pointerdown', onDragStart); grid[r][c] = icon;
