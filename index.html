@@ -295,17 +295,27 @@ function resetIdleTimer() {
 
 function startIdleTimer(scene, playerX, playerY) {
     resetIdleTimer();
-    var hints = [
-        'Куда же дальше?',
-        'Кажется, пора в путь…',
-        'Что там, у причала?',
-        'Елисею нужно решить…',
-        'Сон продолжается…'
-    ];
+
+    var allCompleted = locations.every(function(l){ return l.completed; });
+    var hints = [];
+
+    if (puzzleActive) {
+        hints = ['Какие тут фигурки…', 'Надо собрать три в ряд.', 'Интересно, что получится?'];
+    } else if (allCompleted) {
+        hints = ['Какой красивый храм…', 'Кажется, сон подходит к концу.', 'А что, если где-то спрятан секрет?'];
+    } else if (locations[1].completed && !locations[2].completed) {
+        hints = ['Какое трудное было плавание…', 'Садко спасён! Что же дальше?', 'Надо достроить храм.'];
+    } else if (!locations[0].completed) {
+        hints = ['Надо идти к причалу…', 'Как я здесь оказался?', 'Как здесь красиво…'];
+    } else {
+        hints = ['Куда же дальше?', 'Кажется, пора в путь…', 'Сон продолжается…'];
+    }
+
     var hint = hints[Math.floor(Math.random() * hints.length)];
 
     idleTimer = scene.time.delayedCall(12000, function() {
         if (isMoving || puzzleActive || dialogContainer) return;
+
         var style = {
             fontSize:'13px',
             fill:'#ffffff',
@@ -318,6 +328,22 @@ function startIdleTimer(scene, playerX, playerY) {
             align:'center'
         };
         idleCloud = scene.add.text(playerX, playerY - 80, hint, style).setOrigin(0.5).setAlpha(0);
+
+        var cloudWidth = idleCloud.width;
+        var leftEdge = playerX - cloudWidth / 2;
+        var rightEdge = playerX + cloudWidth / 2;
+        var newX = playerX;
+
+        if (leftEdge < 10) {
+            newX = 10 + cloudWidth / 2;
+        } else if (rightEdge > 390) {
+            newX = 390 - cloudWidth / 2;
+        }
+
+        if (newX !== playerX) {
+            idleCloud.x = newX;
+        }
+
         scene.tweens.add({ targets: idleCloud, alpha:1, duration:400, ease:'Power2' });
         idleActive = true;
     });
@@ -586,7 +612,6 @@ function showEnding() {
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
 
-    // Плохая концовка (проигрыш всех жизней)
     if (lives <= 0 && !allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.85);
 
@@ -648,7 +673,6 @@ function showEnding() {
         return;
     }
 
-    // Хорошая концовка (все артефакты собраны)
     if (allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.9);
         scene.add.text(200, 40, 'Елисей запомнил сон целиком', {
@@ -699,7 +723,6 @@ function showEnding() {
         return;
     }
 
-    // Запасной вариант
     scene.add.image(200, 350, 'epilog_udivlenie').setDisplaySize(400, 700);
     scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
     scene.add.text(200, 580, 'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?', {
