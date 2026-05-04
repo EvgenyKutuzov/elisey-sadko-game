@@ -313,32 +313,50 @@ function clearPuzzleHints() {
     puzzleHintHighlights = [];
 }
 
+// Новая логика: собираем все результативные ходы и выбираем самый "глубинный"
 function findValidMove() {
+    var targetMoves = [];
+    var anyMoves = [];
+
     for (var r = 0; r < ROWS; r++) {
         for (var c = 0; c < COLS; c++) {
             if (c < COLS - 1) {
                 var type = checkSwap(r, c, r, c + 1);
-                if (type === targetType) return { row: r, col: c, dir: 'right' };
+                if (type) {
+                    var move = { row: r, col: c, dir: 'right', type: type, depth: r };
+                    if (type === targetType) {
+                        targetMoves.push(move);
+                    } else {
+                        anyMoves.push(move);
+                    }
+                }
             }
             if (r < ROWS - 1) {
                 var type = checkSwap(r, c, r + 1, c);
-                if (type === targetType) return { row: r, col: c, dir: 'down' };
+                if (type) {
+                    var move = { row: r, col: c, dir: 'down', type: type, depth: r };
+                    if (type === targetType) {
+                        targetMoves.push(move);
+                    } else {
+                        anyMoves.push(move);
+                    }
+                }
             }
         }
     }
-    for (var r = 0; r < ROWS; r++) {
-        for (var c = 0; c < COLS; c++) {
-            if (c < COLS - 1) {
-                var type = checkSwap(r, c, r, c + 1);
-                if (type) return { row: r, col: c, dir: 'right' };
-            }
-            if (r < ROWS - 1) {
-                var type = checkSwap(r, c, r + 1, c);
-                if (type) return { row: r, col: c, dir: 'down' };
-            }
-        }
+
+    // Выбираем лучший ход: сначала целевые, затем любые, с максимальной глубиной (нижние ряды)
+    var bestMove = null;
+    if (targetMoves.length > 0) {
+        // Сортируем по убыванию глубины (номер строки)
+        targetMoves.sort(function(a, b) { return b.depth - a.depth; });
+        bestMove = targetMoves[0];
+    } else if (anyMoves.length > 0) {
+        anyMoves.sort(function(a, b) { return b.depth - a.depth; });
+        bestMove = anyMoves[0];
     }
-    return null;
+
+    return bestMove;
 }
 
 function checkSwap(r1, c1, r2, c2) {
@@ -1270,7 +1288,6 @@ function fillEmptySpaces(isInitial) {
             var rewardIcon = scene.add.image(locX, locY - 40, artifactImg).setDisplaySize(80, 80).setAlpha(0).setDepth(10);
             scene.tweens.add({ targets: rewardIcon, alpha: 1, y: locY - 80, duration: 400, ease: 'Power2' });
 
-            // Показываем кнопки "Вернуться на карту" и "Скрыть фишки"
             var backBtn = scene.add.text(200, 600, 'Вернуться на карту', {
                 fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
                 backgroundColor:'#333333', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
@@ -1288,8 +1305,6 @@ function fillEmptySpaces(isInitial) {
                 toggleTiles(scene);
                 toggleBtn.setText(tilesVisible ? '👁️ Скрыть фишки' : '👁️ Показать фишки');
             });
-
-            // Не вызываем автоматический возврат на карту
         }
     } else if (!isInitial && movesLeft <= 0) loseLevel();
     else if (!isInitial) scene.time.delayedCall(200, checkMatches);
