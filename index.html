@@ -391,7 +391,7 @@ function startIdleTimer(scene, playerX, playerY) {
     } else if (allCompleted) {
         hints = ['Какой красивый храм…', 'Кажется, сон подходит к концу.', 'А что, если где-то спрятан секрет?'];
     } else if (locations[1].completed && !locations[2].completed) {
-        hints = ['Какое трудное было плавание…', 'Садко спасён! Что же дальше?', 'Надо достроить храм.'];
+        hints = ['Какая сложная была битва…', 'Как нам повезло!', 'Куда теперь?'];
     } else if (!locations[0].completed) {
         hints = ['Надо идти к причалу…', 'Как я здесь оказался?', 'Как здесь красиво…'];
     } else {
@@ -1206,9 +1206,10 @@ function fillEmptySpaces(isInitial) {
 
             var locX = currentLocation.x || 200;
             var locY = currentLocation.y || 300;
-            var rewardIcon = scene.add.image(locX, locY - 40, artifactImg).setDisplaySize(60, 60).setAlpha(0).setDepth(10);
-            scene.tweens.add({ targets: rewardIcon, alpha: 1, y: locY - 60, duration: 400, ease: 'Power2' });
-            scene.tweens.add({ targets: rewardIcon, alpha: 0, delay: 1800, duration: 400, onComplete: function() {
+            // Иконка побольше (80x80) и дольше (3 секунды)
+            var rewardIcon = scene.add.image(locX, locY - 40, artifactImg).setDisplaySize(80, 80).setAlpha(0).setDepth(10);
+            scene.tweens.add({ targets: rewardIcon, alpha: 1, y: locY - 80, duration: 400, ease: 'Power2' });
+            scene.tweens.add({ targets: rewardIcon, alpha: 0, delay: 3000, duration: 400, onComplete: function() {
                 rewardIcon.destroy();
             }});
 
