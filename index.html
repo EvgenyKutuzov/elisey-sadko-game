@@ -313,7 +313,6 @@ function clearPuzzleHints() {
     puzzleHintHighlights = [];
 }
 
-// Новая логика: собираем все результативные ходы и выбираем самый "глубинный"
 function findValidMove() {
     var targetMoves = [];
     var anyMoves = [];
@@ -345,10 +344,8 @@ function findValidMove() {
         }
     }
 
-    // Выбираем лучший ход: сначала целевые, затем любые, с максимальной глубиной (нижние ряды)
     var bestMove = null;
     if (targetMoves.length > 0) {
-        // Сортируем по убыванию глубины (номер строки)
         targetMoves.sort(function(a, b) { return b.depth - a.depth; });
         bestMove = targetMoves[0];
     } else if (anyMoves.length > 0) {
@@ -1040,15 +1037,6 @@ function startPuzzle(location) {
         drawMap.call(scene);
     });
 
-    var toggleBtn = scene.add.text(200, 630, '👁️ Скрыть фишки', {
-        fontSize:'13px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
-        backgroundColor:'#333333aa', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
-    }).setOrigin(0.5).setInteractive().setAlpha(0);
-    toggleBtn.on('pointerdown', function() {
-        toggleTiles(scene);
-        toggleBtn.setText(tilesVisible ? '👁️ Скрыть фишки' : '👁️ Показать фишки');
-    });
-
     scene.input.on('pointerdown', function() {
         resetPuzzleIdle();
         startPuzzleIdleHint(scene);
@@ -1279,15 +1267,44 @@ function fillEmptySpaces(isInitial) {
             updatePlayerSprite(currentLocation);
 
             var artifactImg = '';
-            if (currentLocation.name === 'Причал') artifactImg = 'uzelok_art';
-            else if (currentLocation.name === 'За рекой') artifactImg = 'river_shell_art';
-            else if (currentLocation.name === 'Великий Новгород') artifactImg = 'krestik_art';
+            var artifactLine = '';
+            if (currentLocation.name === 'Причал') {
+                artifactImg = 'uzelok_art';
+                artifactLine = 'Верёвочка с узелком – сувенир с причала';
+            } else if (currentLocation.name === 'За рекой') {
+                artifactImg = 'river_shell_art';
+                artifactLine = 'Ракушка – подарок подводного царства';
+            } else if (currentLocation.name === 'Великий Новгород') {
+                artifactImg = 'krestik_art';
+                artifactLine = 'Деревянный крестик – благословение Новгорода';
+            }
 
-            var locX = currentLocation.x || 200;
-            var locY = currentLocation.y || 300;
-            var rewardIcon = scene.add.image(locX, locY - 40, artifactImg).setDisplaySize(80, 80).setAlpha(0).setDepth(10);
-            scene.tweens.add({ targets: rewardIcon, alpha: 1, y: locY - 80, duration: 400, ease: 'Power2' });
+            // Плавно скрываем все оставшиеся фишки
+            for (var r = 0; r < ROWS; r++) {
+                for (var c = 0; c < COLS; c++) {
+                    if (grid[r][c]) {
+                        scene.tweens.add({ targets: grid[r][c], alpha: 0, duration: 400 });
+                    }
+                }
+            }
 
+            // Показываем иконку артефакта и текст
+            var rewardIcon = scene.add.image(200, 340, artifactImg).setDisplaySize(100, 100).setAlpha(0).setDepth(10);
+            scene.tweens.add({ targets: rewardIcon, alpha: 1, y: 320, duration: 400, ease: 'Power2' });
+
+            var congratsText = scene.add.text(200, 440, 'Ура! Уровень пройден.', {
+                fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+                stroke:'#000000', strokeThickness:3
+            }).setOrigin(0.5).setDepth(10).setAlpha(0);
+            scene.tweens.add({ targets: congratsText, alpha:1, duration:400 });
+
+            var artifactText = scene.add.text(200, 480, artifactLine, {
+                fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'italic',
+                stroke:'#000000', strokeThickness:2
+            }).setOrigin(0.5).setDepth(10).setAlpha(0);
+            scene.tweens.add({ targets: artifactText, alpha:1, duration:400 });
+
+            // Кнопка "Вернуться на карту"
             var backBtn = scene.add.text(200, 600, 'Вернуться на карту', {
                 fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
                 backgroundColor:'#333333', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
@@ -1295,15 +1312,6 @@ function fillEmptySpaces(isInitial) {
             backBtn.on('pointerdown', function() {
                 puzzleActive = false;
                 drawMap.call(scene);
-            });
-
-            var toggleBtn = scene.add.text(200, 570, '👁️ Скрыть фишки', {
-                fontSize:'13px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
-                backgroundColor:'#333333aa', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
-            }).setOrigin(0.5).setInteractive().setDepth(10);
-            toggleBtn.on('pointerdown', function() {
-                toggleTiles(scene);
-                toggleBtn.setText(tilesVisible ? '👁️ Скрыть фишки' : '👁️ Показать фишки');
             });
         }
     } else if (!isInitial && movesLeft <= 0) loseLevel();
