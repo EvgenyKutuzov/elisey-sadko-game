@@ -37,7 +37,7 @@ var musicOn = true;
 var musicBtn = null;
 
 var playerContainer;
-var dialogGroup = null;
+var dialogContainer = null;
 var playButton;
 var isMoving = false;
 var lastPlayerLoc = null;
@@ -153,9 +153,9 @@ function showPrologue() {
 
 function showDialog(msg, portraitKey, showNextBtn, offsetY) {
     var scene = game.scene.scenes[0];
-    if (dialogGroup) {
-        dialogGroup.destroy();
-        dialogGroup = null;
+    if (dialogContainer) {
+        dialogContainer.destroy();
+        dialogContainer = null;
     }
 
     offsetY = offsetY || 0;
@@ -180,13 +180,14 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         bgCenterX = bgLeftX + bgWidth / 2;
     }
 
-    dialogGroup = scene.add.group();
+    dialogContainer = scene.add.container(0, 30);
+    dialogContainer.setAlpha(0);
 
     var bg = scene.add.rectangle(bgCenterX, bgCenterY, bgWidth, bgHeight, 0x000000, 0.8);
-    dialogGroup.add(bg);
+    dialogContainer.add(bg);
 
     var dialogText = scene.add.text(bgLeftX + paddingX, bgCenterY - bgHeight/2 + paddingY, msg, textStyle);
-    dialogGroup.add(dialogText);
+    dialogContainer.add(dialogText);
 
     if (portraitKey) {
         var portraitX = (portraitKey === 'sadko') ? 80 : 70;
@@ -196,11 +197,16 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         } else {
             portrait.setDisplaySize(180, 180);
         }
-        dialogGroup.add(portrait);
+        dialogContainer.add(portrait);
     }
 
-    // Убираем анимацию, чтобы не ломать вызовы
-    // dialogGroup.setAlpha(0) и tween не используются
+    scene.tweens.add({
+        targets: dialogContainer,
+        alpha: 1,
+        y: 0,
+        duration: 400,
+        ease: 'Power2'
+    });
 
     if (playButton && !showNextBtn) {
         playButton.setVisible(true);
@@ -241,8 +247,8 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         });
 
         nextBtn.on('pointerdown', function(){
-            dialogGroup.destroy();
-            dialogGroup = null;
+            dialogContainer.destroy();
+            dialogContainer = null;
             if (playButton) playButton.setVisible(false);
             if (callbackAfterDialog) {
                 callbackAfterDialog();
@@ -251,14 +257,14 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
             drawMap.call(scene);
         });
 
-        dialogGroup.add(nextBtn);
+        dialogContainer.add(nextBtn);
     }
 }
 
 function hideDialog() {
-    if (dialogGroup) {
-        dialogGroup.destroy();
-        dialogGroup = null;
+    if (dialogContainer) {
+        dialogContainer.destroy();
+        dialogContainer = null;
     }
     if (playButton) {
         playButton.setVisible(false);
@@ -349,7 +355,7 @@ function drawMap() {
     playerContainer.add(currentSprite);
     playerContainer.currentSprite = currentSprite;
 
-    dialogGroup = null;
+    dialogContainer = null;
     playButton = this.add.text(200, 310, 'ИГРАТЬ', { fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold', backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2 }).setOrigin(0.5).setInteractive().setVisible(false);
     playButton.customTween = null;
     playButton.on('pointerdown', function(){ if(currentLocation && !currentLocation.completed) startPuzzle(currentLocation); });
@@ -406,7 +412,6 @@ function drawMap() {
         });
     }
 
-    // Подсказка
     var hintText = allCompleted ? 'Нажми «Проснуться»' : (function(){
         if (activeLocs.length === 1) {
             return 'Нажми на иконку «' + activeLocs[0].name + '»';
@@ -607,7 +612,7 @@ function showEnding() {
             }).setOrigin(0.5);
         }
 
-        var nextY = 370; // Достаточно места под подписями
+        var nextY = 370;
 
         if (secretFound) {
             scene.add.text(200, nextY, 'Спасибо, что прошли игру целиком\nи открыли секретную концовку!\n\nЛичная благодарность от создателя игры,\nучастника экспедиции «Круг Ладоги».\nЖелаю вам новых удивительных приключений!', {
