@@ -84,6 +84,8 @@ var idleActive = false;
 var puzzleIdleTimer = null;
 var puzzleHintHighlights = [];
 
+var tilesVisible = true;
+
 function preloadAssets() {
     var progressBox = this.add.graphics();
     progressBox.fillStyle(0x222222, 0.8);
@@ -311,9 +313,7 @@ function clearPuzzleHints() {
     puzzleHintHighlights = [];
 }
 
-// Полностью переписанная логика поиска результативного хода
 function findValidMove() {
-    // Сначала ищем ход, дающий совпадение целевого типа
     for (var r = 0; r < ROWS; r++) {
         for (var c = 0; c < COLS; c++) {
             if (c < COLS - 1) {
@@ -326,7 +326,6 @@ function findValidMove() {
             }
         }
     }
-    // Если целевого нет — ищем любой
     for (var r = 0; r < ROWS; r++) {
         for (var c = 0; c < COLS; c++) {
             if (c < COLS - 1) {
@@ -339,7 +338,7 @@ function findValidMove() {
             }
         }
     }
-    return null; // ходов нет
+    return null;
 }
 
 function checkSwap(r1, c1, r2, c2) {
@@ -350,7 +349,6 @@ function checkSwap(r1, c1, r2, c2) {
     var type2 = icon2.artifactType;
     if (type1 === type2) return null;
 
-    // Создаём временную копию типов на сетке
     var tempGrid = [];
     for (var r = 0; r < ROWS; r++) {
         tempGrid[r] = [];
@@ -358,18 +356,14 @@ function checkSwap(r1, c1, r2, c2) {
             tempGrid[r][c] = grid[r][c] ? grid[r][c].artifactType : null;
         }
     }
-    // Выполняем обмен во временной сетке
     tempGrid[r1][c1] = type2;
     tempGrid[r2][c2] = type1;
 
-    // Проверяем, появилась ли линия из трёх+
     function hasMatch(row, col, type) {
-        // Горизонтально
         var count = 1;
         for (var c = col - 1; c >= 0 && tempGrid[row][c] === type; c--) count++;
         for (var c = col + 1; c < COLS && tempGrid[row][c] === type; c++) count++;
         if (count >= 3) return true;
-        // Вертикально
         count = 1;
         for (var r = row - 1; r >= 0 && tempGrid[r][col] === type; r--) count++;
         for (var r = row + 1; r < ROWS && tempGrid[r][col] === type; r++) count++;
@@ -378,7 +372,7 @@ function checkSwap(r1, c1, r2, c2) {
     }
 
     if (hasMatch(r1, c1, type2) || hasMatch(r2, c2, type1)) {
-        return type2; // возвращаем тип, который дал совпадение
+        return type2;
     }
     return null;
 }
@@ -392,7 +386,7 @@ function startPuzzleIdleHint(scene) {
         clearPuzzleHints();
 
         var move = findValidMove();
-        if (!move) return; // нет доступных ходов
+        if (!move) return;
 
         var icon1 = grid[move.row][move.col];
         var icon2 = null;
@@ -870,12 +864,24 @@ function showEnding() {
     restartBtn.on('pointerdown', function() { location.reload(); });
 }
 
+function toggleTiles(scene) {
+    tilesVisible = !tilesVisible;
+    for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+            if (grid[r][c]) {
+                scene.tweens.add({ targets: grid[r][c], alpha: tilesVisible ? 1 : 0, duration: 300 });
+            }
+        }
+    }
+}
+
 function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
     resetIdleTimer();
     resetPuzzleIdle();
+    tilesVisible = true;
     collectedCount = 0; grid = []; targetType = location.targetType; targetCount = location.targetCount;
     movesLeft = 25;
     firstMoveMade = false;
@@ -1010,10 +1016,19 @@ function startPuzzle(location) {
     var backBtn = scene.add.text(200, 660, 'Вернуться на карту', {
         fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
         backgroundColor:'#333333', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
-    }).setOrigin(0.5).setInteractive();
+    }).setOrigin(0.5).setInteractive().setAlpha(0);
     backBtn.on('pointerdown', function(){
         puzzleActive = false;
         drawMap.call(scene);
+    });
+
+    var toggleBtn = scene.add.text(200, 630, '👁️ Скрыть фишки', {
+        fontSize:'13px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+        backgroundColor:'#333333aa', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
+    }).setOrigin(0.5).setInteractive().setAlpha(0);
+    toggleBtn.on('pointerdown', function() {
+        toggleTiles(scene);
+        toggleBtn.setText(tilesVisible ? '👁️ Скрыть фишки' : '👁️ Показать фишки');
     });
 
     scene.input.on('pointerdown', function() {
@@ -1254,19 +1269,27 @@ function fillEmptySpaces(isInitial) {
             var locY = currentLocation.y || 300;
             var rewardIcon = scene.add.image(locX, locY - 40, artifactImg).setDisplaySize(80, 80).setAlpha(0).setDepth(10);
             scene.tweens.add({ targets: rewardIcon, alpha: 1, y: locY - 80, duration: 400, ease: 'Power2' });
-            scene.tweens.add({ targets: rewardIcon, alpha: 0, delay: 3000, duration: 400, onComplete: function() {
-                rewardIcon.destroy();
-            }});
 
-            var factText = scene.add.text(200, 380, '✅ Миссия выполнена!', {
-                fontSize:'15px', fill:'#ffffff', align:'center', wordWrap:{width:340},
-                backgroundColor:'#000000cc', padding:{x:12,y:12},
-                fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3
-            }).setOrigin(0.5);
-            scene.time.delayedCall(2500, function(){
-                factText.destroy();
+            // Показываем кнопки "Вернуться на карту" и "Скрыть фишки"
+            var backBtn = scene.add.text(200, 600, 'Вернуться на карту', {
+                fontSize:'14px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+                backgroundColor:'#333333', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
+            }).setOrigin(0.5).setInteractive().setDepth(10);
+            backBtn.on('pointerdown', function() {
+                puzzleActive = false;
                 drawMap.call(scene);
             });
+
+            var toggleBtn = scene.add.text(200, 570, '👁️ Скрыть фишки', {
+                fontSize:'13px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+                backgroundColor:'#333333aa', padding:{x:8,y:4}, stroke:'#000000', strokeThickness:2
+            }).setOrigin(0.5).setInteractive().setDepth(10);
+            toggleBtn.on('pointerdown', function() {
+                toggleTiles(scene);
+                toggleBtn.setText(tilesVisible ? '👁️ Скрыть фишки' : '👁️ Показать фишки');
+            });
+
+            // Не вызываем автоматический возврат на карту
         }
     } else if (!isInitial && movesLeft <= 0) loseLevel();
     else if (!isInitial) scene.time.delayedCall(200, checkMatches);
