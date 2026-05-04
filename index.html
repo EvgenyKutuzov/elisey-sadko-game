@@ -398,14 +398,8 @@ function drawMap() {
         secretZone.on('pointerdown', function() {
             if (!secretFound) {
                 secretFound = true;
-                var secretMsg = scene.add.text(200, 100, 'Ты нашёл секрет!\nЭта игра создана участником одиночной экспедиции\nЕвгением Кутузовым\nво время подготовки к историческому маршруту\n«Круг Ладоги».\n\nПосвящается всем любителям приключений.', {
-                    fontSize: '13px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
-                    backgroundColor: '#000000cc', padding: {x: 12, y: 12}, align: 'center',
-                    stroke: '#000000', strokeThickness: 3
-                }).setOrigin(0.5);
-                scene.time.delayedCall(5000, function() {
-                    secretMsg.destroy();
-                });
+                // Показываем диалог с секретом прямо на карте
+                showDialog('Ты нашёл секрет!\nЭта игра создана участником одиночной экспедиции\nЕвгением Кутузовым\nво время подготовки к историческому маршруту\n«Круг Ладоги».\n\nПосвящается всем любителям приключений.', null, true, -100);
             }
         });
     }
@@ -604,6 +598,7 @@ function showEnding() {
             stroke: '#000000', strokeThickness: 4, align: 'center'
         }).setOrigin(0.5);
 
+        // Иконки артефактов
         var artImgs = ['uzelok_art', 'river_shell_art', 'krestik_art'];
         var artNames = ['Верёвочный узелок', 'Ракушка', 'Деревянный крестик'];
         for (var i = 0; i < 3; i++) {
@@ -614,18 +609,22 @@ function showEnding() {
             }).setOrigin(0.5);
         }
 
-        var nextY = 270;
+        // Определяем позицию для дальнейших элементов (чтобы не перекрывать иконки)
+        var nextY = 270; // Базовая позиция после иконок
+
         if (secretFound) {
+            // Добавляем блок текста благодарности, но теперь он не перекрывает иконки
             scene.add.text(200, nextY, 'Спасибо, что прошли игру целиком\nи открыли секретную концовку!\n\nЛичная благодарность от создателя игры,\nучастника экспедиции «Круг Ладоги».\nЖелаю вам новых удивительных приключений!', {
                 fontSize: '12px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
                 align: 'center', stroke: '#000000', strokeThickness: 3,
                 backgroundColor: '#000000aa', padding: {x: 10, y: 10}
             }).setOrigin(0.5);
-            nextY += 120;
+            // Сдвигаем позицию для кнопки ДАЛЕЕ вниз
+            nextY += 140;
         }
 
         // Кнопка ДАЛЕЕ для перехода к пробуждению
-        var nextBtn = scene.add.text(200, nextY + 30, 'ДАЛЕЕ', {
+        var nextBtn = scene.add.text(200, nextY + 40, 'ДАЛЕЕ', {
             fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
