@@ -77,6 +77,10 @@ var firstMoveMade = false;
 var highlightFrames = [];
 var finalDialogShown = false;
 
+var idleTimer = null;
+var idleCloud = null;
+var idleActive = false;
+
 function preloadAssets() {
     var progressBox = this.add.graphics();
     progressBox.fillStyle(0x222222, 0.8);
@@ -277,6 +281,48 @@ function hideDialog() {
 
 var callbackAfterDialog = null;
 
+function resetIdleTimer() {
+    if (idleTimer) {
+        idleTimer.remove(false);
+        idleTimer = null;
+    }
+    if (idleCloud) {
+        idleCloud.destroy();
+        idleCloud = null;
+        idleActive = false;
+    }
+}
+
+function startIdleTimer(scene, playerX, playerY) {
+    resetIdleTimer();
+    var hints = [
+        'Куда же дальше?',
+        'Кажется, пора в путь…',
+        'Что там, у причала?',
+        'Елисею нужно решить…',
+        'Сон продолжается…'
+    ];
+    var hint = hints[Math.floor(Math.random() * hints.length)];
+
+    idleTimer = scene.time.delayedCall(12000, function() {
+        if (isMoving || puzzleActive || dialogContainer) return;
+        var style = {
+            fontSize:'13px',
+            fill:'#ffffff',
+            fontFamily:'Comfortaa, Arial',
+            fontStyle:'italic',
+            backgroundColor:'#000000aa',
+            padding:{x:10, y:6},
+            stroke:'#000000',
+            strokeThickness:2,
+            align:'center'
+        };
+        idleCloud = scene.add.text(playerX, playerY - 80, hint, style).setOrigin(0.5).setAlpha(0);
+        scene.tweens.add({ targets: idleCloud, alpha:1, duration:400, ease:'Power2' });
+        idleActive = true;
+    });
+}
+
 function drawMap() {
     this.children.removeAll(true);
     puzzleActive = false;
@@ -423,11 +469,19 @@ function drawMap() {
     var hintX = allCompleted ? 240 : 220;
     this.add.rectangle(hintX, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
     mapHintText = this.add.text(hintX, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
+
+    resetIdleTimer();
+    this.input.on('pointerdown', function() {
+        resetIdleTimer();
+        startIdleTimer(self, startX, startY);
+    });
+    startIdleTimer(self, startX, startY);
 }
 
 function movePlayerTo(tx, ty, location, needsPuzzle) {
     isMoving = true;
     hideDialog();
+    resetIdleTimer();
     currentLocation = null;
     tx=Math.round(tx); ty=Math.round(ty);
     lastPlayerLoc = {x: tx, y: ty};
@@ -663,6 +717,7 @@ function startPuzzle(location) {
     puzzleActive = true;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
+    resetIdleTimer();
     collectedCount = 0; grid = []; targetType = location.targetType; targetCount = location.targetCount;
     movesLeft = 25;
     firstMoveMade = false;
