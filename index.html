@@ -451,12 +451,13 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         currentLocation = location;
 
         if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
+            // Сразу меняем спрайт на одиночного Женю, до диалога
+            updatePlayerSprite({name:'Причал'});
             // Устанавливаем callback для правильной обработки возвращения к Причалу
             callbackAfterDialog = function() {
                 locations[2].unlocked = true;
                 locations[0].completed = true;
                 locations[1].completed = true;
-                updatePlayerSprite({name:'Причал'});
                 if (playerContainer) {
                     playerContainer.x = 160;
                     playerContainer.y = 510;
