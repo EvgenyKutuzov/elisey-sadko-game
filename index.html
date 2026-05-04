@@ -242,7 +242,7 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
             dialogGroup.destroy();
             dialogGroup = null;
             if (playButton) playButton.setVisible(false);
-            // Действие для финального диалога (открытие кнопок после нажатия ДАЛЕЕ)
+            // Выполняем callback, если он задан, затем перерисовываем карту
             if (callbackAfterDialog) {
                 callbackAfterDialog();
                 callbackAfterDialog = null;
@@ -373,8 +373,6 @@ function drawMap() {
             };
             // Показываем диалог Садко с кнопкой ДАЛЕЕ
             showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', true, -50);
-            // Сразу после showDialog (которая добавила кнопку ДАЛЕЕ) мы не даём появиться другим кнопкам,
-            // потому что они появятся только после нажатия ДАЛЕЕ и вызова drawMap.
             return;
         }
 
@@ -453,10 +451,20 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
         currentLocation = location;
 
         if (location.name === 'Причал' && locations[1].completed && !locations[2].unlocked) {
-            updatePlayerSprite({name:'Причал'});
-            lastPlayerLoc = {x: 160, y: 510};
+            // Устанавливаем callback для правильной обработки возвращения к Причалу
+            callbackAfterDialog = function() {
+                locations[2].unlocked = true;
+                locations[0].completed = true;
+                locations[1].completed = true;
+                updatePlayerSprite({name:'Причал'});
+                if (playerContainer) {
+                    playerContainer.x = 160;
+                    playerContainer.y = 510;
+                }
+                lastPlayerLoc = {x: 160, y: 510};
+                if (mapHintText) mapHintText.setText('Нажми на иконку «Великий Новгород»');
+            };
             showDialog('Елисей, спасибо тебе за помощь! Говоришь, седой старец подсказал что надо делать? Кажется, я знаю кто это... В благодарность нам надо достроить храм!', 'sadko', true);
-            if (mapHintText) mapHintText.setText('Нажми ДАЛЕЕ');
             return;
         }
 
