@@ -268,6 +268,21 @@ function hideDialog() {
 
 var callbackAfterDialog = null;
 
+// Функция для добавления виньетки (эффект сна)
+function addVignette(scene) {
+    // Четыре полупрозрачных прямоугольника по краям экрана
+    var vignetteAlpha = 0.2;
+    var barWidth = 40;
+    // Вверх
+    scene.add.rectangle(200, barWidth/2, 400, barWidth, 0x000000, vignetteAlpha);
+    // Низ
+    scene.add.rectangle(200, 700 - barWidth/2, 400, barWidth, 0x000000, vignetteAlpha);
+    // Лево
+    scene.add.rectangle(barWidth/2, 350, barWidth, 700, 0x000000, vignetteAlpha);
+    // Право
+    scene.add.rectangle(400 - barWidth/2, 350, barWidth, 700, 0x000000, vignetteAlpha);
+}
+
 function drawMap() {
     this.children.removeAll(true);
     puzzleActive = false;
@@ -326,7 +341,6 @@ function drawMap() {
         });
     }
 
-    // Позиция героя
     var startX = lastPlayerLoc ? lastPlayerLoc.x : 50;
     var startY = lastPlayerLoc ? lastPlayerLoc.y : 350;
     if (allCompleted) {
@@ -361,16 +375,15 @@ function drawMap() {
 
     livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
-    // Финальная карта
     if (allCompleted) {
         if (!finalDialogShown) {
             finalDialogShown = true;
             callbackAfterDialog = function() {};
             showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', true, -50);
+            addVignette(this);
             return;
         }
 
-        // Кнопка Проснуться
         var dreamBtn = this.add.text(200, 670, '🌟 Проснуться 🌟', {
             fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
@@ -387,12 +400,10 @@ function drawMap() {
 
         dreamBtn.on('pointerdown', function(){ showEnding(); });
 
-        // Секретная зона
         var secretZone = this.add.rectangle(350, 130, 60, 60, 0x000000, 0.01).setInteractive();
         secretZone.on('pointerdown', function(pointer) {
             if (!secretFound) {
                 secretFound = true;
-                // Эффект звёздочек
                 var emitter = self.add.particles(350, 130, 'particle_star', {
                     speed: { min: -150, max: 150 },
                     angle: { min: 0, max: 360 },
@@ -403,24 +414,12 @@ function drawMap() {
                 });
                 emitter.explode();
 
-                // Показываем диалог с секретом
                 showDialog('Ты нашёл секрет!\nЭта игра создана участником одиночной экспедиции\nЕвгением Кутузовым\nво время подготовки к историческому маршруту\n«Круг Ладоги».\n\nПосвящается всем любителям приключений.', null, true, -100);
             }
         });
     }
 
-    // Подсказка
-    var hintText = allCompleted ? 'Нажми «Проснуться»' : (function(){
-        if (activeLocs.length === 1) {
-            return 'Нажми на иконку «' + activeLocs[0].name + '»';
-        }
-        return 'Выбери локацию';
-    })();
-    var htemp = this.add.text(0,0,hintText,{ fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
-    var hw=htemp.width, hh=htemp.height; htemp.destroy();
-    var hintX = allCompleted ? 240 : 220;
-    this.add.rectangle(hintX, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
-    mapHintText = this.add.text(hintX, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
+    addVignette(this);
 }
 
 function movePlayerTo(tx, ty, location, needsPuzzle) {
@@ -485,6 +484,7 @@ function showMemories() {
     scene.children.removeAll(true);
 
     scene.add.rectangle(200, 350, 400, 700, 0x1a1a2e, 0.95);
+    addVignette(scene); // Добавляем виньетку в воспоминания
 
     scene.add.text(200, 40, 'Воспоминания Елисея', {
         fontSize: '22px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
@@ -530,7 +530,7 @@ function showEnding() {
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
 
-    // Плохая концовка
+    // Плохая концовка (проигрыш всех жизней)
     if (lives <= 0 && !allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.85);
 
@@ -592,7 +592,7 @@ function showEnding() {
         return;
     }
 
-    // Хорошая концовка
+    // Хорошая концовка (все артефакты собраны)
     if (allArtifacts) {
         scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.9);
         scene.add.text(200, 40, 'Елисей запомнил сон целиком', {
@@ -610,7 +610,7 @@ function showEnding() {
             }).setOrigin(0.5);
         }
 
-        var nextY = 280; // достаточно места после подписей
+        var nextY = 340; // Опускаем ещё ниже, чтобы точно не перекрывать подписи
 
         if (secretFound) {
             scene.add.text(200, nextY, 'Спасибо, что прошли игру целиком\nи открыли секретную концовку!\n\nЛичная благодарность от создателя игры,\nучастника экспедиции «Круг Ладоги».\nЖелаю вам новых удивительных приключений!', {
@@ -618,10 +618,10 @@ function showEnding() {
                 align: 'center', stroke: '#000000', strokeThickness: 3,
                 backgroundColor: '#000000aa', padding: {x: 10, y: 10}
             }).setOrigin(0.5);
-            nextY += 140; // сдвиг для кнопки
+            nextY += 160;
         }
 
-        var nextBtn = scene.add.text(200, nextY + 40, 'ДАЛЕЕ', {
+        var nextBtn = scene.add.text(200, nextY + 20, 'ДАЛЕЕ', {
             fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
@@ -800,6 +800,8 @@ function startPuzzle(location) {
         puzzleActive = false;
         drawMap.call(scene);
     });
+
+    addVignette(scene); // Добавляем виньетку и в режим пазла
 }
 
 function highlightTargets() {
