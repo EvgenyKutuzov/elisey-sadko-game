@@ -44,6 +44,7 @@ var lastPlayerLoc = null;
 var mapHintText = null;
 
 var artifactCollected = { uzelok: false, rakuska: false, krestik: false };
+var secretFound = false;
 
 var locations = [
     { name:'Причал',        x:160, y:510, unlocked:true,  completed:false, targetType:'bochki',  targetCount:10, icon:'prichal_icon',    puzzleBg:'prichal_puzzle', isReturn: false },
@@ -198,7 +199,7 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         dialogGroup.add(portrait);
     }
 
-    // Кнопка ИГРАТЬ показывается только если нет кнопки ДАЛЕЕ и диалог не финальный
+    // Кнопка ИГРАТЬ или ДАЛЕЕ
     if (playButton && !showNextBtn) {
         playButton.setVisible(true);
         playButton.setPosition(200, 310);
@@ -241,16 +242,11 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
             dialogGroup.destroy();
             dialogGroup = null;
             if (playButton) playButton.setVisible(false);
-            locations[2].unlocked = true;
-            locations[0].completed = true;
-            locations[1].completed = true;
-            updatePlayerSprite({name:'Причал'});
-            if (playerContainer) {
-                playerContainer.x = 160;
-                playerContainer.y = 510;
+            // Действие для финального диалога (открытие кнопок после нажатия ДАЛЕЕ)
+            if (callbackAfterDialog) {
+                callbackAfterDialog();
+                callbackAfterDialog = null;
             }
-            lastPlayerLoc = {x: 160, y: 510};
-            if (mapHintText) mapHintText.setText('Нажми на иконку «Великий Новгород»');
             drawMap.call(scene);
         });
 
@@ -271,6 +267,8 @@ function hideDialog() {
         }
     }
 }
+
+var callbackAfterDialog = null;
 
 function drawMap() {
     this.children.removeAll(true);
@@ -330,8 +328,14 @@ function drawMap() {
         });
     }
 
+    // Позиция героя по умолчанию
     var startX = lastPlayerLoc ? lastPlayerLoc.x : 50;
     var startY = lastPlayerLoc ? lastPlayerLoc.y : 350;
+    if (allCompleted) {
+        startX = 50;
+        startY = 350;
+        lastPlayerLoc = {x: 50, y: 350};
+    }
     playerContainer = this.add.container(startX, startY);
     var spriteKey = 'zhenya';
     if (locations[1].completed && !locations[2].completed && !locations[0].completed) spriteKey = 'zhenya_sadko_boat';
@@ -359,20 +363,22 @@ function drawMap() {
 
     livesText = this.add.text(340, 45, '❤️ x '+lives, { fontSize:'18px', fill:'#ffffff', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
 
-    // В финале — только кнопка «Проснуться» и диалог (рюкзачок убран)
+    // Финальная карта
     if (allCompleted) {
-        lastPlayerLoc = {x: 50, y: 350};
         if (!finalDialogShown) {
             finalDialogShown = true;
-            // Финальный диалог без упоминания рюкзачка
-            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', false, -50);
-            // Сразу скрываем кнопку ИГРАТЬ, если она вдруг появилась
-            if (playButton) {
-                playButton.setVisible(false);
-                if (playButton.customTween) playButton.customTween.stop();
-            }
+            // Устанавливаем callback для показа кнопок после диалога
+            callbackAfterDialog = function() {
+                // Появятся после следующей перерисовки карты
+            };
+            // Показываем диалог Садко с кнопкой ДАЛЕЕ
+            showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', true, -50);
+            // Сразу после showDialog (которая добавила кнопку ДАЛЕЕ) мы не даём появиться другим кнопкам,
+            // потому что они появятся только после нажатия ДАЛЕЕ и вызова drawMap.
+            return;
         }
 
+        // После закрытия диалога (drawMap вызывается повторно) показываем кнопки
         var dreamBtn = this.add.text(200, 670, '🌟 Проснуться 🌟', {
             fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
             backgroundColor:'#333333', padding:{x:12,y:6}, stroke:'#000000', strokeThickness:2
@@ -388,8 +394,25 @@ function drawMap() {
         });
 
         dreamBtn.on('pointerdown', function(){ showEnding(); });
+
+        // Секретная зона
+        var secretZone = this.add.rectangle(350, 130, 50, 50, 0x000000, 0.01).setInteractive();
+        secretZone.on('pointerdown', function() {
+            if (!secretFound) {
+                secretFound = true;
+                var secretMsg = scene.add.text(200, 100, 'Ты нашёл секрет!\nЭта игра создана участником одиночной экспедиции\nЕвгением Кутузовым\nво время подготовки к историческому маршруту\n«Круг Ладоги».\n\nПосвящается всем любителям приключений.', {
+                    fontSize: '13px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+                    backgroundColor: '#000000cc', padding: {x: 12, y: 12}, align: 'center',
+                    stroke: '#000000', strokeThickness: 3
+                }).setOrigin(0.5);
+                scene.time.delayedCall(5000, function() {
+                    secretMsg.destroy();
+                });
+            }
+        });
     }
 
+    // Подсказка
     var hintText = allCompleted ? 'Нажми «Проснуться»' : (function(){
         if (activeLocs.length === 1) {
             return 'Нажми на иконку «' + activeLocs[0].name + '»';
@@ -451,7 +474,6 @@ function movePlayerTo(tx, ty, location, needsPuzzle) {
 }
 
 function showMemories() {
-    // Эта функция больше не вызывается из карты, но оставлю её для возможного использования
     if (isMoving) return;
     var scene = game.scene.scenes[0];
     scene.children.removeAll(true);
@@ -484,8 +506,6 @@ function showMemories() {
                 fontSize: '12px', fill: '#cccccc', fontFamily: 'Comfortaa, Arial',
                 stroke: '#000000', strokeThickness: 2
             });
-        } else {
-            // Несобранные не показываем
         }
     });
 
@@ -518,40 +538,52 @@ function showEnding() {
         if (artifactCollected.rakuska) collectedItems.push({ img: 'river_shell_art', label: 'Ракушка' });
         if (artifactCollected.krestik) collectedItems.push({ img: 'krestik_art', label: 'Деревянный крестик' });
 
+        var nextY = 160;
         if (collectedItems.length > 0) {
-            var startY = 160;
             var stepY = 90;
             collectedItems.forEach(function(item, index) {
-                var y = startY + index * stepY;
+                var y = nextY + index * stepY;
                 scene.add.image(130, y, item.img).setDisplaySize(60, 60);
                 scene.add.text(200, y, item.label, {
                     fontSize: '16px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial',
                     stroke: '#000000', strokeThickness: 3
                 }).setOrigin(0, 0.5);
             });
-
-            var textY = startY + collectedItems.length * stepY + 20;
-            scene.add.text(200, textY, 'Остальное ускользнуло,\nкак утренний туман…', {
+            nextY += collectedItems.length * stepY + 20;
+            scene.add.text(200, nextY, 'Остальное ускользнуло,\nкак утренний туман…', {
                 fontSize: '14px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
                 align: 'center', stroke: '#000000', strokeThickness: 2
             }).setOrigin(0.5);
+            nextY += 50;
         } else {
-            scene.add.text(200, 200, 'Ничего не запомнилось…\nСон растаял без следа.', {
+            scene.add.text(200, nextY, 'Ничего не запомнилось…\nСон растаял без следа.', {
                 fontSize: '16px', fill: '#aaaaaa', fontFamily: 'Comfortaa, Arial', fontStyle: 'italic',
                 align: 'center', stroke: '#000000', strokeThickness: 2
             }).setOrigin(0.5);
+            nextY += 70;
         }
 
-        scene.add.text(200, 440, 'Может быть, попробовать ещё раз\nи увидеть весь сон целиком?', {
-            fontSize: '15px', fill: '#ffffff', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
-            align: 'center', stroke: '#000000', strokeThickness: 3
-        }).setOrigin(0.5);
-
-        var restartBtn = scene.add.text(200, 520, '🔄 Начать заново', {
-            fontSize: '18px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
-            backgroundColor: '#333333', padding: { x: 12, y: 6 }
+        // Кнопка ДАЛЕЕ для перехода к пробуждению
+        var nextBtn = scene.add.text(200, nextY + 30, 'ДАЛЕЕ', {
+            fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+            backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2
         }).setOrigin(0.5).setInteractive();
-        restartBtn.on('pointerdown', function() { location.reload(); });
+
+        nextBtn.on('pointerdown', function() {
+            scene.children.removeAll(true);
+            scene.add.image(200, 350, 'epilog_udivlenie').setDisplaySize(400, 700);
+            scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
+            scene.add.text(200, 580, 'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?', {
+                fontSize:'16px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+                backgroundColor:'#000000cc', padding:{x:16,y:12}, stroke:'#000000', strokeThickness:2
+            }).setOrigin(0.5);
+            var restartBtn = scene.add.text(200, 660, '🔄 Начать заново', {
+                fontSize:'18px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+                backgroundColor:'#333333', padding:{x:12,y:6}
+            }).setOrigin(0.5).setInteractive();
+            restartBtn.on('pointerdown', function() { location.reload(); });
+        });
+
         return;
     }
 
@@ -573,7 +605,23 @@ function showEnding() {
             }).setOrigin(0.5);
         }
 
-        scene.time.delayedCall(2800, function() {
+        var nextY = 270;
+        if (secretFound) {
+            scene.add.text(200, nextY, 'Спасибо, что прошли игру целиком\nи открыли секретную концовку!\n\nЛичная благодарность от создателя игры,\nучастника экспедиции «Круг Ладоги».\nЖелаю вам новых удивительных приключений!', {
+                fontSize: '12px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
+                align: 'center', stroke: '#000000', strokeThickness: 3,
+                backgroundColor: '#000000aa', padding: {x: 10, y: 10}
+            }).setOrigin(0.5);
+            nextY += 120;
+        }
+
+        // Кнопка ДАЛЕЕ для перехода к пробуждению
+        var nextBtn = scene.add.text(200, nextY + 30, 'ДАЛЕЕ', {
+            fontSize:'22px', fill:'#ffd700', fontFamily:'Comfortaa, Arial', fontStyle:'bold',
+            backgroundColor:'#333333', padding:{x:16,y:8}, stroke:'#000000', strokeThickness:2
+        }).setOrigin(0.5).setInteractive();
+
+        nextBtn.on('pointerdown', function() {
             scene.children.removeAll(true);
             scene.add.image(200, 350, 'epilog').setDisplaySize(400, 700);
             scene.add.text(200, 580, 'Елисей открыл глаза.\nЗа окном светало.\nКнижка былин лежала рядом.\nМальчик улыбнулся…', {
@@ -586,10 +634,11 @@ function showEnding() {
             }).setOrigin(0.5).setInteractive();
             restartBtn.on('pointerdown', function() { location.reload(); });
         });
+
         return;
     }
 
-    // Запасной вариант
+    // Запасной вариант (не должен случаться)
     scene.add.image(200, 350, 'epilog_udivlenie').setDisplaySize(400, 700);
     scene.add.rectangle(200, 350, 400, 700, 0x000000, 0.5);
     scene.add.text(200, 580, 'Елисей вздрогнул и проснулся...\nЧто это было?\nМожет, попробовать ещё раз?', {
