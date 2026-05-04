@@ -199,16 +199,8 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         dialogGroup.add(portrait);
     }
 
-    // Анимированное появление всей группы
-    dialogGroup.setAlpha(0);
-    dialogGroup.setY(30);
-    scene.tweens.add({
-        targets: dialogGroup,
-        alpha: 1,
-        y: 0,
-        duration: 400,
-        ease: 'Power2'
-    });
+    // Убираем анимацию, чтобы не ломать вызовы
+    // dialogGroup.setAlpha(0) и tween не используются
 
     if (playButton && !showNextBtn) {
         playButton.setVisible(true);
@@ -413,6 +405,19 @@ function drawMap() {
             }
         });
     }
+
+    // Подсказка
+    var hintText = allCompleted ? 'Нажми «Проснуться»' : (function(){
+        if (activeLocs.length === 1) {
+            return 'Нажми на иконку «' + activeLocs[0].name + '»';
+        }
+        return 'Выбери локацию';
+    })();
+    var htemp = this.add.text(0,0,hintText,{ fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 });
+    var hw=htemp.width, hh=htemp.height; htemp.destroy();
+    var hintX = allCompleted ? 240 : 220;
+    this.add.rectangle(hintX, 28, hw+16, hh+10, 0x000000, 0.6).setOrigin(0.5);
+    mapHintText = this.add.text(hintX, 28, hintText, { fontSize:'14px', fill:'#ffffff', align:'center', fontFamily:'Comfortaa, Arial', fontStyle:'bold', stroke:'#000000', strokeThickness:3 }).setOrigin(0.5);
 }
 
 function movePlayerTo(tx, ty, location, needsPuzzle) {
@@ -602,7 +607,7 @@ function showEnding() {
             }).setOrigin(0.5);
         }
 
-        var nextY = 370; // Максимально низко, чтобы не перекрывать названия
+        var nextY = 370; // Достаточно места под подписями
 
         if (secretFound) {
             scene.add.text(200, nextY, 'Спасибо, что прошли игру целиком\nи открыли секретную концовку!\n\nЛичная благодарность от создателя игры,\nучастника экспедиции «Круг Ладоги».\nЖелаю вам новых удивительных приключений!', {
