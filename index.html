@@ -199,6 +199,17 @@ function showDialog(msg, portraitKey, showNextBtn, offsetY) {
         dialogGroup.add(portrait);
     }
 
+    // Анимированное появление всей группы
+    dialogGroup.setAlpha(0);
+    dialogGroup.setY(30);
+    scene.tweens.add({
+        targets: dialogGroup,
+        alpha: 1,
+        y: 0,
+        duration: 400,
+        ease: 'Power2'
+    });
+
     if (playButton && !showNextBtn) {
         playButton.setVisible(true);
         playButton.setPosition(200, 310);
@@ -267,21 +278,6 @@ function hideDialog() {
 }
 
 var callbackAfterDialog = null;
-
-// Функция для добавления виньетки (эффект сна)
-function addVignette(scene) {
-    // Четыре полупрозрачных прямоугольника по краям экрана
-    var vignetteAlpha = 0.2;
-    var barWidth = 40;
-    // Вверх
-    scene.add.rectangle(200, barWidth/2, 400, barWidth, 0x000000, vignetteAlpha);
-    // Низ
-    scene.add.rectangle(200, 700 - barWidth/2, 400, barWidth, 0x000000, vignetteAlpha);
-    // Лево
-    scene.add.rectangle(barWidth/2, 350, barWidth, 700, 0x000000, vignetteAlpha);
-    // Право
-    scene.add.rectangle(400 - barWidth/2, 350, barWidth, 700, 0x000000, vignetteAlpha);
-}
 
 function drawMap() {
     this.children.removeAll(true);
@@ -380,7 +376,6 @@ function drawMap() {
             finalDialogShown = true;
             callbackAfterDialog = function() {};
             showDialog('Вот и построен храм, Елисей! Ты спас меня и помог завершить это благое дело. Спасибо тебе за всё, что ты сделал!', 'sadko', true, -50);
-            addVignette(this);
             return;
         }
 
@@ -418,8 +413,6 @@ function drawMap() {
             }
         });
     }
-
-    addVignette(this);
 }
 
 function movePlayerTo(tx, ty, location, needsPuzzle) {
@@ -484,7 +477,6 @@ function showMemories() {
     scene.children.removeAll(true);
 
     scene.add.rectangle(200, 350, 400, 700, 0x1a1a2e, 0.95);
-    addVignette(scene); // Добавляем виньетку в воспоминания
 
     scene.add.text(200, 40, 'Воспоминания Елисея', {
         fontSize: '22px', fill: '#ffd700', fontFamily: 'Comfortaa, Arial', fontStyle: 'bold',
@@ -610,7 +602,7 @@ function showEnding() {
             }).setOrigin(0.5);
         }
 
-        var nextY = 340; // Опускаем ещё ниже, чтобы точно не перекрывать подписи
+        var nextY = 370; // Максимально низко, чтобы не перекрывать названия
 
         if (secretFound) {
             scene.add.text(200, nextY, 'Спасибо, что прошли игру целиком\nи открыли секретную концовку!\n\nЛичная благодарность от создателя игры,\nучастника экспедиции «Круг Ладоги».\nЖелаю вам новых удивительных приключений!', {
@@ -800,8 +792,6 @@ function startPuzzle(location) {
         puzzleActive = false;
         drawMap.call(scene);
     });
-
-    addVignette(scene); // Добавляем виньетку и в режим пазла
 }
 
 function highlightTargets() {
