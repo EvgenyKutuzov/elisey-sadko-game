@@ -311,7 +311,78 @@ function clearPuzzleHints() {
     puzzleHintHighlights = [];
 }
 
-// Новая логика подсказки: ищет обмен, который точно создаст линию из трёх+
+// Полностью переписанная логика поиска результативного хода
+function findValidMove() {
+    // Сначала ищем ход, дающий совпадение целевого типа
+    for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+            if (c < COLS - 1) {
+                var type = checkSwap(r, c, r, c + 1);
+                if (type === targetType) return { row: r, col: c, dir: 'right' };
+            }
+            if (r < ROWS - 1) {
+                var type = checkSwap(r, c, r + 1, c);
+                if (type === targetType) return { row: r, col: c, dir: 'down' };
+            }
+        }
+    }
+    // Если целевого нет — ищем любой
+    for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+            if (c < COLS - 1) {
+                var type = checkSwap(r, c, r, c + 1);
+                if (type) return { row: r, col: c, dir: 'right' };
+            }
+            if (r < ROWS - 1) {
+                var type = checkSwap(r, c, r + 1, c);
+                if (type) return { row: r, col: c, dir: 'down' };
+            }
+        }
+    }
+    return null; // ходов нет
+}
+
+function checkSwap(r1, c1, r2, c2) {
+    var icon1 = grid[r1][c1];
+    var icon2 = grid[r2][c2];
+    if (!icon1 || !icon2) return null;
+    var type1 = icon1.artifactType;
+    var type2 = icon2.artifactType;
+    if (type1 === type2) return null;
+
+    // Создаём временную копию типов на сетке
+    var tempGrid = [];
+    for (var r = 0; r < ROWS; r++) {
+        tempGrid[r] = [];
+        for (var c = 0; c < COLS; c++) {
+            tempGrid[r][c] = grid[r][c] ? grid[r][c].artifactType : null;
+        }
+    }
+    // Выполняем обмен во временной сетке
+    tempGrid[r1][c1] = type2;
+    tempGrid[r2][c2] = type1;
+
+    // Проверяем, появилась ли линия из трёх+
+    function hasMatch(row, col, type) {
+        // Горизонтально
+        var count = 1;
+        for (var c = col - 1; c >= 0 && tempGrid[row][c] === type; c--) count++;
+        for (var c = col + 1; c < COLS && tempGrid[row][c] === type; c++) count++;
+        if (count >= 3) return true;
+        // Вертикально
+        count = 1;
+        for (var r = row - 1; r >= 0 && tempGrid[r][col] === type; r--) count++;
+        for (var r = row + 1; r < ROWS && tempGrid[r][col] === type; r++) count++;
+        if (count >= 3) return true;
+        return false;
+    }
+
+    if (hasMatch(r1, c1, type2) || hasMatch(r2, c2, type1)) {
+        return type2; // возвращаем тип, который дал совпадение
+    }
+    return null;
+}
+
 function startPuzzleIdleHint(scene) {
     resetPuzzleIdle();
     if (!puzzleActive) return;
@@ -320,136 +391,40 @@ function startPuzzleIdleHint(scene) {
         if (!puzzleActive || dragIcon || dragLocked) return;
         clearPuzzleHints();
 
-        // Собираем все результативные ходы: { row, col, dir, type }
-        var targetMoves = [];
-        var anyMoves = [];
+        var move = findValidMove();
+        if (!move) return; // нет доступных ходов
 
-        for (var r = 0; r < ROWS; r++) {
-            for (var c = 0; c < COLS; c++) {
-                // Проверяем обмен вправо
-                if (c < COLS - 1) {
-                    var typeAfterSwap = checkSwapCreatesMatch(r, c, r, c+1);
-                    if (typeAfterSwap) {
-                        var move = { row: r, col: c, dir: 'right', type: typeAfterSwap };
-                        if (typeAfterSwap === targetType) {
-                            targetMoves.push(move);
-                        } else {
-                            anyMoves.push(move);
-                        }
-                    }
-                }
-                // Проверяем обмен вниз
-                if (r < ROWS - 1) {
-                    var typeAfterSwap = checkSwapCreatesMatch(r, c, r+1, c);
-                    if (typeAfterSwap) {
-                        var move = { row: r, col: c, dir: 'down', type: typeAfterSwap };
-                        if (typeAfterSwap === targetType) {
-                            targetMoves.push(move);
-                        } else {
-                            anyMoves.push(move);
-                        }
-                    }
-                }
-            }
+        var icon1 = grid[move.row][move.col];
+        var icon2 = null;
+        if (move.dir === 'right') {
+            icon2 = grid[move.row][move.col + 1];
+        } else {
+            icon2 = grid[move.row + 1][move.col];
         }
 
-        // Выбираем приоритетный ход
-        var move = null;
-        if (targetMoves.length > 0) {
-            move = targetMoves[Math.floor(Math.random() * targetMoves.length)];
-        } else if (anyMoves.length > 0) {
-            move = anyMoves[Math.floor(Math.random() * anyMoves.length)];
-        }
+        if (icon1 && icon2) {
+            var hint1 = scene.add.rectangle(icon1.x, icon1.y, 82, 82);
+            hint1.setStrokeStyle(3, 0xffff99);
+            hint1.setFillStyle(0x000000, 0);
+            puzzleHintHighlights.push(hint1);
 
-        if (move) {
-            var icon1 = grid[move.row][move.col];
-            var icon2 = null;
-            if (move.dir === 'right') {
-                icon2 = grid[move.row][move.col + 1];
-            } else {
-                icon2 = grid[move.row + 1][move.col];
-            }
+            var hint2 = scene.add.rectangle(icon2.x, icon2.y, 82, 82);
+            hint2.setStrokeStyle(3, 0xffff99);
+            hint2.setFillStyle(0x000000, 0);
+            puzzleHintHighlights.push(hint2);
 
-            if (icon1 && icon2) {
-                var hint1 = scene.add.rectangle(icon1.x, icon1.y, 82, 82);
-                hint1.setStrokeStyle(3, 0xffff99);
-                hint1.setFillStyle(0x000000, 0);
-                puzzleHintHighlights.push(hint1);
-
-                var hint2 = scene.add.rectangle(icon2.x, icon2.y, 82, 82);
-                hint2.setStrokeStyle(3, 0xffff99);
-                hint2.setFillStyle(0x000000, 0);
-                puzzleHintHighlights.push(hint2);
-
-                scene.tweens.add({
-                    targets: [hint1, hint2],
-                    alpha: { from: 0.4, to: 1 },
-                    duration: 600,
-                    yoyo: true,
-                    repeat: 3,
-                    onComplete: function() {
-                        clearPuzzleHints();
-                    }
-                });
-            }
+            scene.tweens.add({
+                targets: [hint1, hint2],
+                alpha: { from: 0.4, to: 1 },
+                duration: 600,
+                yoyo: true,
+                repeat: 3,
+                onComplete: function() {
+                    clearPuzzleHints();
+                }
+            });
         }
     });
-}
-
-// Проверяет, создаст ли обмен двух указанных ячеек линию из трёх+
-function checkSwapCreatesMatch(r1, c1, r2, c2) {
-    // Проверяем, что ячейки существуют и не null
-    if (!grid[r1] || !grid[r1][c1] || !grid[r2] || !grid[r2][c2]) return null;
-    var type1 = grid[r1][c1].artifactType;
-    var type2 = grid[r2][c2].artifactType;
-    if (type1 === type2) return null; // обмен одинаковых не даст нового
-
-    // Мысленно меняем типы
-    var oldType1 = grid[r1][c1].artifactType;
-    var oldType2 = grid[r2][c2].artifactType;
-    grid[r1][c1].artifactType = oldType2;
-    grid[r2][c2].artifactType = oldType1;
-
-    var matchedType = null;
-
-    // Проверяем горизонтальные линии
-    function checkHorizontal(row, col, type) {
-        // считаем влево
-        var count = 1;
-        for (var c = col - 1; c >= 0; c--) {
-            if (grid[row][c] && grid[row][c].artifactType === type) count++;
-            else break;
-        }
-        // вправо
-        for (var c = col + 1; c < COLS; c++) {
-            if (grid[row][c] && grid[row][c].artifactType === type) count++;
-            else break;
-        }
-        return count >= 3 ? type : null;
-    }
-
-    function checkVertical(row, col, type) {
-        var count = 1;
-        for (var r = row - 1; r >= 0; r--) {
-            if (grid[r][col] && grid[r][col].artifactType === type) count++;
-            else break;
-        }
-        for (var r = row + 1; r < ROWS; r++) {
-            if (grid[r][col] && grid[r][col].artifactType === type) count++;
-            else break;
-        }
-        return count >= 3 ? type : null;
-    }
-
-    // Проверяем обе позиции после обмена
-    var res = checkHorizontal(r1, c1, oldType2) || checkVertical(r1, c1, oldType2) ||
-              checkHorizontal(r2, c2, oldType1) || checkVertical(r2, c2, oldType1);
-
-    // Возвращаем типы обратно
-    grid[r1][c1].artifactType = oldType1;
-    grid[r2][c2].artifactType = oldType2;
-
-    return res || null;
 }
 
 function startIdleTimer(scene, playerX, playerY) {
